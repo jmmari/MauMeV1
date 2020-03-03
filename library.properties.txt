@@ -1,0 +1,12 @@
+name=MauMeV1
+version=1.0.0
+author=Jean Martial Mari <jean-martial.mari@upf.pf>, Alban Gabillon <alban.gabillon@upf.pf>
+maintainer=Jean Martial Mari <jean-martial.mari@upf.pf>
+sentence=A multi-hop (flooding) LoRa messenger library.
+paragraph=Supports LoRa and HTTP1.1 wifi clients.
+category=Communication
+url=http://upf.pf/
+includes=MauMeV1.h
+dot_a_linkage=true
+precompiled=true
+ldflags=-lMauMeLibrary
