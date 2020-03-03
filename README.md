@@ -13,7 +13,6 @@ Current tests recommend 25% activity.
 
 Please call "prepForSleep" method before going to deep sleep, to ensure saving the last received packets.
 
-
 ______________________________________________________________________________________________
  MauMe LoRa Multi-Hops Messaging for Arduino
   
