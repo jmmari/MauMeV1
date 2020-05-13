@@ -97,7 +97,6 @@ int LoRaJMMClass::begin(long frequency, SemaphoreHandle_t onReceiveMutex){
   digitalWrite(LORA_RESET, HIGH);
   delay(50);
 #endif
-
   // setup pins
   pinMode(_ss, OUTPUT);
   // set SS high
@@ -147,8 +146,7 @@ int LoRaJMMClass::begin(long frequency, SemaphoreHandle_t onReceiveMutex){
   return 1;
 }
 
-void LoRaJMMClass::end()
-{
+void LoRaJMMClass::end(){
   // put in sleep mode
   sleep();
 
@@ -156,8 +154,7 @@ void LoRaJMMClass::end()
   _spi->end();
 }
 
-int LoRaJMMClass::beginPacket(int implicitHeader)
-{
+int LoRaJMMClass::beginPacket(int implicitHeader){
   if (isTransmitting()) {
     return 0;
   }
@@ -178,8 +175,7 @@ int LoRaJMMClass::beginPacket(int implicitHeader)
   return 1;
 }
 
-int LoRaJMMClass::endPacket(bool async)
-{
+int LoRaJMMClass::endPacket(bool async){
   // put in TX mode
   writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
 
@@ -212,8 +208,7 @@ bool LoRaJMMClass::isTransmitting()
   return false;
 }
 
-int LoRaJMMClass::parsePacket(int size)
-{
+int LoRaJMMClass::parsePacket(int size){
   int packetLength = 0;
   int irqFlags = readRegister(REG_IRQ_FLAGS);
 
@@ -257,18 +252,15 @@ int LoRaJMMClass::parsePacket(int size)
   return packetLength;
 }
 
-int LoRaJMMClass::packetRssi()
-{
+int LoRaJMMClass::packetRssi(){
   return (readRegister(REG_PKT_RSSI_VALUE) - (_frequency < 868E6 ? 164 : 157));
 }
 
-float LoRaJMMClass::packetSnr()
-{
+float LoRaJMMClass::packetSnr(){
   return ((int8_t)readRegister(REG_PKT_SNR_VALUE)) * 0.25;
 }
 
-long LoRaJMMClass::packetFrequencyError()
-{
+long LoRaJMMClass::packetFrequencyError(){
   int32_t freqError = 0;
   freqError = static_cast<int32_t>(readRegister(REG_FREQ_ERROR_MSB) & B111);
   freqError <<= 8L;
@@ -286,13 +278,11 @@ long LoRaJMMClass::packetFrequencyError()
   return static_cast<long>(fError);
 }
 
-size_t LoRaJMMClass::write(uint8_t byte)
-{
+size_t LoRaJMMClass::write(uint8_t byte){
   return write(&byte, sizeof(byte));
 }
 
-size_t LoRaJMMClass::write(const uint8_t *buffer, size_t size)
-{
+size_t LoRaJMMClass::write(const uint8_t *buffer, size_t size){
   int currentLength = readRegister(REG_PAYLOAD_LENGTH);
 
   // check size
@@ -311,8 +301,7 @@ size_t LoRaJMMClass::write(const uint8_t *buffer, size_t size)
   return size;
 }
 
-int LoRaJMMClass::available()
-{
+int LoRaJMMClass::available(){
   return (readRegister(REG_RX_NB_BYTES) - _packetIndex);
 }
 
@@ -327,8 +316,7 @@ int LoRaJMMClass::read()
   return readRegister(REG_FIFO);
 }
 
-int LoRaJMMClass::peek()
-{
+int LoRaJMMClass::peek(){
   if (!available()) {
     return -1;
   }
@@ -388,7 +376,7 @@ void LoRaJMMClass::idle(){
 void LoRaJMMClass::sleep(){
   writeRegister(REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
 }
-
+//-------------------------------------------------------------------------------------------
 void LoRaJMMClass::setTxPower(int level, int outputPin){
   if (PA_OUTPUT_RFO_PIN == outputPin) {
     // RFO
@@ -405,10 +393,8 @@ void LoRaJMMClass::setTxPower(int level, int outputPin){
       if (level > 20) {
         level = 20;
       }
-
       // subtract 3 from level, so 18 - 20 maps to 15 - 17
       level -= 3;
-
       // High Power +20 dBm Operation (Semtech SX1276/77/78/79 5.4.3.)
       writeRegister(REG_PA_DAC, 0x87);
       setOCP(140);
@@ -424,9 +410,9 @@ void LoRaJMMClass::setTxPower(int level, int outputPin){
     writeRegister(REG_PA_CONFIG, PA_BOOST | (level - 2));
   }
 }
-
-void LoRaJMMClass::setFrequency(long frequency)
-{
+//-------------------------------------------------------------------------------------------
+void LoRaJMMClass::setFrequency(long frequency){
+  
   _frequency = frequency;
 
   uint64_t frf = ((uint64_t)frequency << 19) / 32000000;
@@ -436,14 +422,12 @@ void LoRaJMMClass::setFrequency(long frequency)
   writeRegister(REG_FRF_LSB, (uint8_t)(frf >> 0));
 }
 
-int LoRaJMMClass::getSpreadingFactor()
-{
+int LoRaJMMClass::getSpreadingFactor(){
   return readRegister(REG_MODEM_CONFIG_2) >> 4;
 }
 
-void LoRaJMMClass::setSpreadingFactor(int sf)
-{
-  if (sf < 6) {
+void LoRaJMMClass::setSpreadingFactor(int sf){
+  if (sf < 6){
     sf = 6;
   } else if (sf > 12) {
     sf = 12;
@@ -461,8 +445,7 @@ void LoRaJMMClass::setSpreadingFactor(int sf)
   setLdoFlag();
 }
 
-long LoRaJMMClass::getSignalBandwidth()
-{
+long LoRaJMMClass::getSignalBandwidth(){
   byte bw = (readRegister(REG_MODEM_CONFIG_1) >> 4);
 
   switch (bw) {
@@ -481,8 +464,7 @@ long LoRaJMMClass::getSignalBandwidth()
   return -1;
 }
 
-void LoRaJMMClass::setSignalBandwidth(long sbw)
-{
+void LoRaJMMClass::setSignalBandwidth(long sbw){
   int bw;
 
   if (sbw <= 7.8E3) {
@@ -511,8 +493,7 @@ void LoRaJMMClass::setSignalBandwidth(long sbw)
   setLdoFlag();
 }
 
-void LoRaJMMClass::setLdoFlag()
-{
+void LoRaJMMClass::setLdoFlag(){
   // Section 4.1.1.5
   long symbolDuration = 1000 / ( getSignalBandwidth() / (1L << getSpreadingFactor()) ) ;
 
@@ -537,41 +518,34 @@ void LoRaJMMClass::setCodingRate4(int denominator)
   writeRegister(REG_MODEM_CONFIG_1, (readRegister(REG_MODEM_CONFIG_1) & 0xf1) | (cr << 1));
 }
 
-void LoRaJMMClass::setPreambleLength(long length)
-{
+void LoRaJMMClass::setPreambleLength(long length){
   writeRegister(REG_PREAMBLE_MSB, (uint8_t)(length >> 8));
   writeRegister(REG_PREAMBLE_LSB, (uint8_t)(length >> 0));
 }
 
-void LoRaJMMClass::setSyncWord(int sw)
-{
+void LoRaJMMClass::setSyncWord(int sw){
   writeRegister(REG_SYNC_WORD, sw);
 }
 
-void LoRaJMMClass::enableCrc()
-{
+void LoRaJMMClass::enableCrc(){
   writeRegister(REG_MODEM_CONFIG_2, readRegister(REG_MODEM_CONFIG_2) | 0x04);
 }
 
-void LoRaJMMClass::disableCrc()
-{
+void LoRaJMMClass::disableCrc(){
   writeRegister(REG_MODEM_CONFIG_2, readRegister(REG_MODEM_CONFIG_2) & 0xfb);
 }
 
-void LoRaJMMClass::enableInvertIQ()
-{
+void LoRaJMMClass::enableInvertIQ(){
   writeRegister(REG_INVERTIQ,  0x66);
   writeRegister(REG_INVERTIQ2, 0x19);
 }
 
-void LoRaJMMClass::disableInvertIQ()
-{
+void LoRaJMMClass::disableInvertIQ(){
   writeRegister(REG_INVERTIQ,  0x27);
   writeRegister(REG_INVERTIQ2, 0x1d);
 }
 
-void LoRaJMMClass::setOCP(uint8_t mA)
-{
+void LoRaJMMClass::setOCP(uint8_t mA){
   uint8_t ocpTrim = 27;
 
   if (mA <= 120) {
@@ -588,25 +562,21 @@ byte LoRaJMMClass::random()
   return readRegister(REG_RSSI_WIDEBAND);
 }
 
-void LoRaJMMClass::setPins(int ss, int reset, int dio0)
-{
+void LoRaJMMClass::setPins(int ss, int reset, int dio0){
   _ss = ss;
   _reset = reset;
   _dio0 = dio0;
 }
 
-void LoRaJMMClass::setSPI(SPIClass& spi)
-{
+void LoRaJMMClass::setSPI(SPIClass& spi){
   _spi = &spi;
 }
 
-void LoRaJMMClass::setSPIFrequency(uint32_t frequency)
-{
+void LoRaJMMClass::setSPIFrequency(uint32_t frequency){
   _spiSettings = SPISettings(frequency, MSBFIRST, SPI_MODE0);
 }
 
-void LoRaJMMClass::dumpRegisters(Stream& out)
-{
+void LoRaJMMClass::dumpRegisters(Stream& out){
   for (int i = 0; i < 128; i++) {
     out.print("0x");
     out.print(i, HEX);
@@ -615,22 +585,19 @@ void LoRaJMMClass::dumpRegisters(Stream& out)
   }
 }
 
-void LoRaJMMClass::explicitHeaderMode()
-{
+void LoRaJMMClass::explicitHeaderMode(){
   _implicitHeaderMode = 0;
 
   writeRegister(REG_MODEM_CONFIG_1, readRegister(REG_MODEM_CONFIG_1) & 0xfe);
 }
 
-void LoRaJMMClass::implicitHeaderMode()
-{
+void LoRaJMMClass::implicitHeaderMode(){
   _implicitHeaderMode = 1;
 
   writeRegister(REG_MODEM_CONFIG_1, readRegister(REG_MODEM_CONFIG_1) | 0x01);
 }
 
-void LoRaJMMClass::handleDio0Rise()
-{
+void LoRaJMMClass::handleDio0Rise(){
   int irqFlags = readRegister(REG_IRQ_FLAGS);
 
   // clear IRQ's
@@ -652,18 +619,15 @@ void LoRaJMMClass::handleDio0Rise()
   }
 }
 
-uint8_t LoRaJMMClass::readRegister(uint8_t address)
-{
+uint8_t LoRaJMMClass::readRegister(uint8_t address){
   return singleTransfer(address & 0x7f, 0x00);
 }
 
-void LoRaJMMClass::writeRegister(uint8_t address, uint8_t value)
-{
+void LoRaJMMClass::writeRegister(uint8_t address, uint8_t value){
   singleTransfer(address | 0x80, value);
 }
 
-uint8_t LoRaJMMClass::singleTransfer(uint8_t address, uint8_t value)
-{
+uint8_t LoRaJMMClass::singleTransfer(uint8_t address, uint8_t value){
   uint8_t response;
 
   digitalWrite(_ss, LOW);

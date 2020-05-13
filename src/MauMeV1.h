@@ -25,16 +25,16 @@
   #define MAUMEHEADER 1
 
   // #define FORWARD_GEN_PKTS                 // Change to forward any packet (risky, makes collisions live forever !)
-  // #define ACK_PKTS_OF_ACKS                 // Define if you want packets of ACKs acknowledged.
+  #define ACK_PKTS_OF_ACKS                 // Define if you want packets of ACKs acknowledged.
   #define MM_MAX_ACKSENT_PKTS                128  // Maximum number of ACKS stored before overwriting.
   #define MM_MAX_PKTS                        128  // Maximum number of packets stored before overwriting.
   #define MM_MAX_NODE_PKTS                   128  // Maximum number of node packets stored before overwriting. 
-
-  #define MAUME_DEBUG   
+  #define ACK_PILE_MIN_COUNT                 0 // Minimum ACK number in a pile for it to beacknow dealt with 
+  // #define MAUME_DEBUG   
   // #define MAUME_CHECK_ADMIN   
   #define MAUME_ADMIN_ADDR        "ea:b9:dd:dc:5e:1d:41:13:12:c6:0c:8f"   
   #define MAUME_SETUP_WEB_SERVER  // Define if you want to serve messsages with http (requires DNS and soft access point).
-  #define MAUME_SETUP_DNS_SERVER  // Define if you want to serve messsages with http (requires soft access point).
+  // #define MAUME_SETUP_DNS_SERVER  // Define if you want to serve messsages with http (requires soft access point).
   #define MAUME_ACTIVATE_WIFI     // Define if you want to activate MauMe Wifi soft access point.
   
   #include "MauMeHeader.h"
@@ -44,8 +44,11 @@ class MauMeClass {
 public:
   
   MauMeClass();
-  bool                    doRun = true;
-  bool                    doServe = true;
+  
+  void                    runMauMe();
+  void                    sleepMauMe();
+  void                    serveHttp();
+  void                    haltHttp();
   void                    setup(long serialSpeed);
   void                    oledDisplay(bool doFlip);
   void                    oledMauMeMessage(String message, bool doFlip);
@@ -164,6 +167,10 @@ private:
   AsyncResponseStream * IRAM_ATTR getSimusPage(AsyncWebServerRequest *request, ADDRESS macFrom, byte appType);
   bool writeMAC2MEM(String mac);
   String readMEM2MAC();
+  bool    IRAM_ATTR writeMem(int index, int number);
+  int     IRAM_ATTR readMem(int index);
+  void    IRAM_ATTR writeString2Mem(int index, String str, int len);
+  String  IRAM_ATTR readMem2String(int index, int len);
   
 private:
   const byte  DNS_PORT   =     53;
@@ -189,21 +196,24 @@ private:
   TaskHandle_t loRaTask;
   TaskHandle_t dnsTask;
   TaskHandle_t mauMeTask;
-
+  
+  volatile bool           doRun = true;
+  volatile bool           doServe = true;
+  
   String logFile = "";       // This is the path to the MauMe log file.
-  int       DUMMY_PROCESS_STATIC_DELAY        =   60000;  // milliseconds
-  int       DUMMY_PROCESS_RANDOM_DELAY        =   60000;  // milliseconds
-  int       MM_PCKT_PROCESS_STATIC_DELAY      =   60000;  // milliseconds
-  int       MM_PCKT_PROCESS_RANDOM_DELAY      =   60000;  // milliseconds
-  int       MM_TX_POWER_MIN                   =       1;  // THESE ARE FOR HELTEC LoRa V2
-  int       MM_TX_POWER_MAX                   =       4;  // THESE ARE FOR HELTEC LoRa V2
+  int       DUMMY_PROCESS_STATIC_DELAY        =   30000;  // milliseconds
+  int       DUMMY_PROCESS_RANDOM_DELAY        =   30000;  // milliseconds
+  int       MM_PCKT_PROCESS_STATIC_DELAY      =   30000;  // milliseconds
+  int       MM_PCKT_PROCESS_RANDOM_DELAY      =   30000;  // milliseconds
+  int       MM_TX_POWER_MIN                   =       2;  // THESE ARE FOR HELTEC LoRa V2
+  int       MM_TX_POWER_MAX                   =       2;  // THESE ARE FOR HELTEC LoRa V2
   int       MM_PCKT_SAVE_DELAY                =    5000;  // milliseconds
   bool      doAlternate                       =   false;
   int       percentActivity                   =      75;
   int       alternateInterval                 =   12*60*1000;//3600000;  // milliseconds
-  int       dummySendInterval                 =   60000;  // milliseconds
-  int       nbDummyPkts                       =     100;
-  String    dummyTargetAddress                =      "";
+  int       dummySendInterval                 =   10000;  // milliseconds
+  int       nbDummyPkts                       =      25;
+  String    dummyTargetAddress                =      "df:15:33:72:73:7e:fc:30:5c:0b:06:72";//"ff:09:aa:ae:d7:89:73:de:69:74:1e:b9";
   volatile bool sendDummies                   =   false;
   
   volatile SemaphoreHandle_t          pcktListSemaphore;

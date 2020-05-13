@@ -1,6 +1,28 @@
+/*
+            MauMe LoRa Multi-Hops Messaging for Arduino
+  
+  Copyright (c) 2020 Jean Martial Mari & Alban Gabillon, University of French Polynesia. 
+  All rights reserved.
+                                                syy/    -yyy   .yyyyyyyyys     /yyyyyyyyy/  
+                                                mMMo    /MMM`  :MMMMMMMMMMdo   yMMMMMMMMMy  
+                                                mMMo    /MMM`  :MMM-````hMMh   yMMm.....``  
+                                                mMMo    /MMM`  :MMM/----dMdo   yMMMMMMMN    
+                                                mMMo    /MMM`  :MMMMMMMMhs     yMMNyyyys    
+                                                mMMo    /MMM`  :MMMs++++.      yMMd         
+                                                mMMmh.`hdMMM`  :MMM.           yMMd         
+                                                ...sMmmMh...   :MMM.           yMMd        
+ 
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+    Lesser General Public License for more details.  
+*/
+
 #include <LiquidCrystal.h>
-
-
 #include "MauMeV1.h"
 #include "Logo-UPF-small.h"
 
@@ -9,9 +31,57 @@
 #else
     #define ISR_PREFIX
 #endif
-//----------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------
 MauMeClass::MauMeClass(){
   MauMe.DUMMY_PROCESS_STATIC_DELAY = max(DUMMY_PROCESS_MIN_STATIC_DELAY, MauMe.DUMMY_PROCESS_STATIC_DELAY);
+}
+//-------------------------------------------------------------------------------
+bool IRAM_ATTR MauMeClass::writeMem(int index, int number){
+  bool ret = false;
+  while(!xSemaphoreTakeRecursive(MauMe.spiMutex, portMAX_DELAY));
+    // EEPROM.begin(EEPROM_SIZE);
+    EEPROM.writeInt(index * sizeof(int), number);
+    ret = EEPROM.commit();
+  xSemaphoreGiveRecursive(MauMe.spiMutex);
+  return ret;
+}
+//------------------------------------------------------------------------------------------------------------------------
+int IRAM_ATTR MauMeClass::readMem(int index){
+  int nb = -1;
+  while(!xSemaphoreTakeRecursive(MauMe.spiMutex, portMAX_DELAY));
+    // EEPROM.begin(EEPROM_SIZE);
+    nb = (int)EEPROM.readInt(index * sizeof(int));    
+  xSemaphoreGiveRecursive(MauMe.spiMutex);  
+  return nb;
+}
+//------------------------------------------------------------------------------------------------------------------------
+void IRAM_ATTR MauMeClass::writeString2Mem(int index, String str, int len){
+  ADDRESS addr = MauMe.addressFromMacStyleString(str);
+  bool ret = false;
+  while(!xSemaphoreTakeRecursive(MauMe.spiMutex, portMAX_DELAY));
+    while(len){
+      EEPROM.writeChar(index* sizeof(int) + len - 1, addr.dat[len-1]);
+      // Serial.printf(" Wrote : %d.\n", addr.dat[len-1]);
+      EEPROM.commit();
+      len -= 1;
+    }  
+  xSemaphoreGiveRecursive(MauMe.spiMutex);  
+}
+//------------------------------------------------------------------------------------------------------------------------
+String IRAM_ATTR MauMeClass::readMem2String(int index, int len){
+  char * buf = (char*)calloc(len, sizeof(char));
+  int ln = len;
+  while(!xSemaphoreTakeRecursive(MauMe.spiMutex, portMAX_DELAY));
+    // EEPROM.begin(EEPROM_SIZE);
+    while(len){
+      buf[len-1] = EEPROM.readChar(index* sizeof(int) + len - 1);
+      // Serial.printf(" Read : %d.\n", buf[len-1]);
+      len -= 1;
+    }
+  xSemaphoreGiveRecursive(MauMe.spiMutex);  
+  String res = MauMe.addressBuffer2MacFormat((char*)buf, ln);
+  free(buf);
+  return res;
 }
 //-----------------------------------------------------------------------------------------------------------------
 String IRAM_ATTR MauMeClass::getTimeString(time_t now){
@@ -25,10 +95,10 @@ String IRAM_ATTR MauMeClass::getTimeString(time_t now){
 //-----------------------------------------------------------------------------------------------------------------
 int IRAM_ATTR MauMeClass::Log(String str){
   #ifdef MAUME_DEBUG // #endif
-    Serial.println(" >> Appending : "+str+"<br/>\n");
+    Serial.println(" >> NOT Appending : "+str+"<br/>\n");
   #endif
   int ret = 0;
-  ret = appendFile(SPIFFS, MauMe.spiMutex, MauMe.logFile, MauMe.getTimeString(time(NULL))+str+"<br/>\n");
+  //ret = appendFile(SPIFFS, MauMe.spiMutex, MauMe.logFile, MauMe.getTimeString(time(NULL))+str+"<br/>\n");
   return ret; // appendFile(SPIFFS, MauMe.spiMutex, (const char*)(MauMe.logFile.c_str()), str);
 }
 //----------------------------------------------------------------------------------------------------------------
@@ -54,7 +124,7 @@ byte* IRAM_ATTR MauMeClass::getSha256BytesOfBytes(char* payload, const size_t pa
   #endif
   return (shaResult);
 }
-//---------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------
 byte* IRAM_ATTR MauMeClass::getSha256Bytes(String payload){
   // Serial.println("Computing sha 256 of '"+payload+"'.");
   byte * shaResult = (byte*)malloc(sizeof(byte)*32);
@@ -77,7 +147,7 @@ byte* IRAM_ATTR MauMeClass::getSha256Bytes(String payload){
   #endif
   return (shaResult);
 }
-//----------------------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------
 int IRAM_ATTR MauMeClass::countReceivedMessages(){
   int cnt = 0;
   File root = fileOpen(SPIFFS, MauMe.spiMutex, "/RECMES");
@@ -102,15 +172,15 @@ int IRAM_ATTR MauMeClass::countReceivedMessages(){
   return cnt;
   //return countfiles("/RECMES");
 }
-//----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------
 int IRAM_ATTR MauMeClass::countNodeReceivedMessages(){
   return countfiles("/RECMES");
 }
-//----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------
 void MauMeClass::onDelivery(void(*callback)(int)){
   MauMe._onDelivery = callback;  
 }
-//----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------
 ADDRESS MauMeClass::zeroAddress(ADDRESS address){
   int i = 0;
   for(i=0;i<MM_ADDRESS_SIZE;i++){
@@ -118,7 +188,7 @@ ADDRESS MauMeClass::zeroAddress(ADDRESS address){
   }
   return address;
 }
-//----------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------------
 ADDRESS MauMeClass::getZeroAddress(){
   ADDRESS address;
   address = zeroAddress(address);
@@ -166,7 +236,7 @@ String IRAM_ATTR MauMeClass::addressBuffer2Str(char* buff, int len){
   int u = 0;
   for(u=0; u<(len+1)*2+1;u++){dat[u] = 0;}
   int i = 0;
-  for(i=0; i<len;i++){sprintf(dat+i*2, "%02x", buff[i]);}
+  for(i=0; i<len;i++){sprintf(dat+i*2, "%02x", buff[i]);} // Serial.printf(" Conv : %d.\n", buff[i]);
   dat[i*2] = '\0';
   return String(dat);
 }
@@ -184,27 +254,27 @@ String IRAM_ATTR MauMeClass::addressBuffer2MacFormat(char* buff, int len){
   return String(dat);
 }
 //------------------------------------------------------------------------------------------------------------------------
-ADDRESS IRAM_ATTR MauMeClass::addressFromHexString(String str){
-  //Serial.println(" Tokenizing : " + str + ".");
+/*ADDRESS IRAM_ATTR MauMeClass::addressFromHexString(String str){
+  Serial.println(" Tokenizing : " + str + ".");
   ADDRESS mac = getZeroAddress();
   String token = str.substring(0, 2);
-  //Serial.println(" Token : " + token+".");
+  Serial.println(" Token : " + token+".");
   int i = 0;
   while( token!=NULL and token.length() > 0 and i<MM_ADDRESS_SIZE) {
     mac.dat[i] = hexStr2Num((char*)token.c_str());
     i++;
-    token = str.substring(2*i, 2*i+2);    
-    //Serial.println(" Token : " + token+".");
+    token = str.substring(2*i+1, 2*i+3);    
+    Serial.println(" Token : " + token+".");
   }
   return mac;
-}
+}*/
 //------------------------------------------------------------------------------------------------------------------------
 ADDRESS IRAM_ATTR MauMeClass::addressFromBytes(byte * str){
   ADDRESS mac = getZeroAddress();
   memcpy(&mac.dat[0], str, MM_ADDRESS_SIZE);
   return mac;
 }
-//------------------------------------------------------------------------------------------------------------------------
+//------------------------xSemaphoreGiveRecursive(MauMe.spiMutex);  ------------------------------------------------------------------------------------------------
 ADDRESS IRAM_ATTR MauMeClass::macFromMacStyleString(String str){
   ADDRESS mac = getZeroAddress();
   const char s[2] = ":";
@@ -236,9 +306,9 @@ ADDRESS IRAM_ATTR MauMeClass::addressFromMacStyleString(String str){
 String IRAM_ATTR MauMeClass::recPkt2Html(LoRa_PKT * lrPkt){
   String outStr = "Void";
   if(lrPkt != NULL){
-    outStr = "";
-    MauMePKT_0 *mmpkt =  (MauMePKT_0 *)&lrPkt->DAT[0]; // <b> * MauMe - Message </b>:&#160;
-    outStr = "<span><b>CRC</b>: "+String(mmpkt->HDR.CRC32)+", NHP "+String(mmpkt->HDR.NHP)+".<br/>&#13;<b>From</b>: "+addressBuffer2MacFormat(mmpkt->HDR.SEND, MM_ADDRESS_SIZE)+"<br/>&#13;<b>To    </b>: "+addressBuffer2MacFormat(mmpkt->HDR.DEST, MM_ADDRESS_SIZE)+"<br/>&#13;<b>Text: </b>"+String((char*)&mmpkt->LOAD[0])+"</span>";
+    outStr = "";// <b>CRC</b>: "+String(mmpkt->HDR.CRC32)+", 
+    MauMePKT_0 *mmpkt =  (MauMePKT_0 *)&lrPkt->DAT[0]; // <b> * MauMe - Message </b>:&#160;//To    </b>: "+addressBuffer2MacFormat(mmpkt->HDR.DEST, MM_ADDRESS_SIZE)+"<br/>&#13;<b>
+    outStr = "<span>NHP "+String(mmpkt->HDR.NHP)+".<br/>&#13;<b>From</b>: "+addressBuffer2MacFormat(mmpkt->HDR.SEND, MM_ADDRESS_SIZE)+"<br/>&#13;<b>Text: </b>"+String((char*)&mmpkt->LOAD[0])+"</span>";
   }else{Serial.println(" #< ! NULL packet !");}
   return outStr;
 }
@@ -246,9 +316,9 @@ String IRAM_ATTR MauMeClass::recPkt2Html(LoRa_PKT * lrPkt){
 String IRAM_ATTR MauMeClass::pkt2Html(LoRa_PKT * lrPkt){
   String outStr = "Void";
   if(lrPkt != NULL){
-    outStr = "";
-    MauMePKT_0 *mmpkt = (MauMePKT_0 *)&lrPkt->DAT[0]; //  <b> * MauMe - Message </b>:&#160;<br/>&#13;<b>
-    outStr = "<span>CRC</b>: "+String(mmpkt->HDR.CRC32)+"<br/>&#13;<b>From</b>: "+addressBuffer2MacFormat(mmpkt->HDR.SEND, MM_ADDRESS_SIZE)+"<br/>&#13;<b>To  </b>: "+addressBuffer2MacFormat(mmpkt->HDR.DEST, MM_ADDRESS_SIZE)+"<br/>&#13;<b>Text: </b>"+String((char*)&mmpkt->LOAD[0])+"</span>";
+    outStr = "";// CRC</b>: "+String(mmpkt->HDR.CRC32)+"<br/>&#13;
+    MauMePKT_0 *mmpkt = (MauMePKT_0 *)&lrPkt->DAT[0]; //  <b> * MauMe - Message </b>:&#160;<br/>&#13;<b> // <b>From</b>: "+addressBuffer2MacFormat(mmpkt->HDR.SEND, MM_ADDRESS_SIZE)+"<br/>&#13;
+    outStr = "<span><b>To  </b>: "+addressBuffer2MacFormat(mmpkt->HDR.DEST, MM_ADDRESS_SIZE)+"<br/>&#13;<b>Text: </b>"+String((char*)&mmpkt->LOAD[0])+"</span>";
   }else{Serial.println(" #< ! NULL packet !");}
   return outStr;
 }
@@ -284,13 +354,13 @@ LoRa_PKT * IRAM_ATTR MauMeClass::loadLoRaPacket(String path){ // MauMeACK_0 * lo
   }
   return lrPkt;
 }
-//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------
 LoRa_PKT * IRAM_ATTR MauMeClass::freeAndGetNext(LoRa_PKT * list){
   LoRa_PKT * next = list->next;
   free(list);
   return next;
 }
-//---------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------------------
 LoRa_PKT * IRAM_ATTR MauMeClass::getReceivedPackets(){ 
   String path = "";
   LoRa_PKT * headPkt = (LoRa_PKT *)malloc(sizeof(LoRa_PKT));
@@ -422,9 +492,9 @@ int IRAM_ATTR MauMeClass::saveLoRaPkt(const char * dirname, LoRa_PKT * lrPkt, bo
       lrPkt->next = next;
       if(ret <= 0){Serial.println(" #< Write failed !");}else{
         if(overWrite && already){
-          MauMe.Log("-UPDT PKT:"+String(dirname)+String(lrPkt->CRC32)+":"+getPKTType(lrPkt->PCKTTYP)+"("+String(lrPkt->PCKTTYP)+","+String(lrPkt->TX_POW)+","+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+","+String(lrPkt->NB_ACK)+")");
+          // MauMe.Log("-UPDT PKT:"+String(dirname)+String(lrPkt->CRC32)+":"+getPKTType(lrPkt->PCKTTYP)+"(TYP"+String(lrPkt->PCKTTYP)+",PW"+String(lrPkt->TX_POW)+",TX"+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+"MSG,"+String(lrPkt->NB_ACK)+"ACK)");
         }else if(!already){
-          MauMe.Log("-SAVE PKT:"+String(dirname)+String(lrPkt->CRC32)+":"+getPKTType(lrPkt->PCKTTYP)+"("+String(lrPkt->PCKTTYP)+","+String(lrPkt->TX_POW)+","+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+","+String(lrPkt->NB_ACK)+")");
+          // MauMe.Log("-SAVE PKT:"+String(dirname)+String(lrPkt->CRC32)+":"+getPKTType(lrPkt->PCKTTYP)+"(TYP"+String(lrPkt->PCKTTYP)+",PW"+String(lrPkt->TX_POW)+",TX"+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+"MSG,"+String(lrPkt->NB_ACK)+"ACK)");
         }/*else if(!overWrite && !already){
           MauMe.Log("-SAVE PKT:"+dirname+":"+String(lrPkt->CRC32)+"("+String(lrPkt->PCKTTYP)+","+String(lrPkt->TX_POW)+","+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+","+String(lrPkt->NB_ACK)+")");
         }*/
@@ -458,9 +528,9 @@ int MauMeClass::saveLoRaACK_0(const char * dirname, MauMeACK_0 * mmAck, bool ove
       Serial.println(" #< ACK Write failed");
     }else{
       if(overWrite && already){
-          MauMe.Log("-UPDT ACK:"+String(dirname)+String(mmAck->CRC32)+":"+MauMe.getACKType(mmAck->TYPE)+"("+String(mmAck->HTL)+","+String(mmAck->HASH)+","+String(mmAck->FRMT)+","+String(mmAck->TYPE)+")");
+          // MauMe.Log("-UPDT ACK:"+String(dirname)+String(mmAck->CRC32)+":"+MauMe.getACKType(mmAck->TYPE)+"(HTL"+String(mmAck->HTL)+",HSH"+String(mmAck->HASH)+",FRMT"+String(mmAck->FRMT)+",TYP"+String(mmAck->TYPE)+")");
         }else if(!already){
-          MauMe.Log("-SAVE ACK:"+String(dirname)+String(mmAck->CRC32)+":"+MauMe.getACKType(mmAck->TYPE)+"("+String(mmAck->HTL)+","+String(mmAck->HASH)+","+String(mmAck->FRMT)+","+String(mmAck->TYPE)+")");
+          // MauMe.Log("-SAVE ACK:"+String(dirname)+String(mmAck->CRC32)+":"+MauMe.getACKType(mmAck->TYPE)+"(HTL"+String(mmAck->HTL)+",HSH"+String(mmAck->HASH)+",FRMT"+String(mmAck->FRMT)+",TYP"+String(mmAck->TYPE)+")");
         }
     }
   }else{
@@ -596,8 +666,8 @@ MauMePKT_0 * MauMeClass::createDummyPacket(String text){
         addressTo = macFromMacStyleString("7f:61:b2:dd:0d:c2:ca:bf:2d:aa:3e:54");        break;
       case 4:
         addressTo = macFromMacStyleString("d3:3f:84:fd:f0:49:f0:26:8b:bb:e7:de");        break;
-      //case 5:
-      //  addressTo = macFromMacStyleString("7C:D6:61:33:64:D2");        break;
+      case 5:
+        addressTo = macFromMacStyleString("ff:09:aa:ae:d7:89:73:de:69:74:1e:b9");//7C:D6:61:33:64:D2");        break;
       default:
         addressTo = macFromMacStyleString("ea:b9:dd:dc:5e:1d:41:13:12:c6:0c:8f");        break;
     }
@@ -652,8 +722,8 @@ String MauMeClass::getACKType(unsigned char type){
 }
 //------------------------------------------------------------------------------------------------------------------------
 int MauMeClass::sendLoRaPKT(LoRa_PKT * lrPkt, bool save){
-  if(lrPkt->TX_POW > MM_TX_POWER_MAX){
-    lrPkt->TX_POW = MM_TX_POWER_MIN;
+  if(lrPkt->TX_POW > MauMe.MM_TX_POWER_MAX){
+    lrPkt->TX_POW = MauMe.MM_TX_POWER_MIN;
   }
   #ifdef MAUME_DEBUG // #endif
     Serial.println(" ->               Setting power : "+String(lrPkt->TX_POW)); 
@@ -663,16 +733,16 @@ int MauMeClass::sendLoRaPKT(LoRa_PKT * lrPkt, bool save){
     Serial.println(" -> Sending packet with nb ACKs : "+String(lrPkt->NB_ACK)); 
   #endif
   LoRa_JMM.setTxPower(lrPkt->TX_POW);
-  bool ret = sendLoRaBuffer((char*)&lrPkt->DAT[0], (int)lrPkt->PKTSIZ);
+  bool ret = MauMe.sendLoRaBuffer((char*)&lrPkt->DAT[0], (int)lrPkt->PKTSIZ);
   if(ret){
     lrPkt->NB_TX += 1;      //    
-    MauMe.Log("-SEND PKT: "+String(lrPkt->CRC32)+":"+MauMe.getPKTType(lrPkt->PCKTTYP)+"("+String(lrPkt->PCKTTYP)+","+String(lrPkt->TX_POW)+","+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+","+String(lrPkt->NB_ACK)+")");
+    MauMe.Log("-SEND PKT: "+String(lrPkt->CRC32)+":"+MauMe.getPKTType(lrPkt->PCKTTYP)+"(TYP"+String(lrPkt->PCKTTYP)+",PW"+String(lrPkt->TX_POW)+",TX"+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+"MSG,"+String(lrPkt->NB_ACK)+"ACK)");
   }
   if(save){
     #ifdef MAUME_DEBUG // #endif
       Serial.println(" -> Needs saving updated packet."); 
     #endif
-    if(saveLoRaPkt("/PKTS/", lrPkt, true)){
+    if(MauMe.saveLoRaPkt("/PKTS/", lrPkt, true)){
       #ifdef MAUME_DEBUG // #endif
         Serial.println(" -> Saved updated packet.");                  
       #endif
@@ -687,7 +757,7 @@ MauMeACK_0 * MauMeClass::makeMauMeACK_0(unsigned char htl, unsigned char frmt, u
   mmAck->FRMT = frmt;
   mmAck->TYPE = type;
   mmAck->HASH = hash;
-  mmAck->CRC32 = getCRC32FromChars((char*)&mmAck->FRMT, 6);
+  mmAck->CRC32 = MauMe.getCRC32FromChars((char*)&mmAck->FRMT, 6);
   return mmAck;
 }
 //------------------------------------------------------------------------------------------------------------------------ 
@@ -829,9 +899,9 @@ LoRa_PKT * IRAM_ATTR MauMeClass::getCurrentLoRaPkt(){
      avail = LoRa_JMM.available();
   }
   if(pos>0){
-    #ifdef MAUME_DEBUG // #endif
+    // #ifdef MAUME_DEBUG // #endif
       Serial.println(" ! Received "+String(pos)+" bytes ! -> Packet RSSI : "+String(LoRa_JMM.packetRssi()));
-    #endif
+    // #endif
   }
   pos = (pos>MAX_PKT_SIZE)?MAX_PKT_SIZE:pos;
   LoRa_PKT * lrPkt = (LoRa_PKT *)malloc(sizeof(LoRa_PKT));
@@ -855,7 +925,7 @@ bool IRAM_ATTR MauMeClass::addPacket(LoRa_PKT * lrPkt){
   #ifdef MAUME_DEBUG // #endif
     Serial.println(" -> Packet added.");
   #endif
-  MauMe.Log("-ADDD PKT: "+String(lrPkt->CRC32)+":"+MauMe.getPKTType(lrPkt->PCKTTYP)+"("+String(lrPkt->PCKTTYP)+","+String(lrPkt->TX_POW)+","+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+","+String(lrPkt->NB_ACK)+")");
+  MauMe.Log("-INJCT PKT: "+String(lrPkt->CRC32)+":"+MauMe.getPKTType(lrPkt->PCKTTYP)+"(TYP"+String(lrPkt->PCKTTYP)+",PW"+String(lrPkt->TX_POW)+",TX"+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+"MSG,"+String(lrPkt->NB_ACK)+"ACK)");
   return ret;
 }
 //---------------------------------------------------------------------------------------------------------------------
@@ -922,6 +992,27 @@ bool MauMeClass::ackAlreadyPiggyBacked(LoRa_PKT * pckt, MauMeACK_0 * anAck){
     }
   }
   return false;
+}
+//------------------------------------------------------------------------------------------------------------------
+void MauMeClass::runMauMe(){
+  MauMe.doRun = true;
+  delay(250);
+  LoRa_JMM.receive();  
+}
+//------------------------------------------------------------------------------------------------------------------
+void MauMeClass::sleepMauMe(){
+  LoRa_JMM.sleep();
+  MauMe.doRun = false;
+  delay(250);
+  MauMe.saveReceivedPackets();
+}
+//------------------------------------------------------------------------------------------------------------------
+void MauMeClass::serveHttp(){
+  MauMe.doServe = true;
+}
+//------------------------------------------------------------------------------------------------------------------
+void MauMeClass::haltHttp(){
+  MauMe.doServe = false;
 }
 //---------------------------------------------------------------------------------------------------------------------
 int MauMeClass::processPackets(){
@@ -1124,7 +1215,7 @@ int MauMeClass::processPackets(){
           lrPkt->CRC32 = headMmAck->CRC32;//getCRC32FromChars((char*)&headMmAck->FRMT, 6);
           //-------------------------------------------------------------------
           #ifdef ACK_PKTS_OF_ACKS
-            if(!onlyACKsOfPile && cnt>1){
+            if(!onlyACKsOfPile && cnt> ACK_PILE_MIN_COUNT){
               #ifdef MAUME_DEBUG // #endif
                 Serial.println(" -> Needs saving ACK pile packet."); 
               #endif
@@ -1134,7 +1225,7 @@ int MauMeClass::processPackets(){
                 #endif
               }else{Serial.println(" #< Failed saving ACK pile packet !");}
             }
-            int ret = MauMe.sendLoRaPKT(lrPkt, !onlyACKsOfPile && cnt>1);
+            int ret = MauMe.sendLoRaPKT(lrPkt, !onlyACKsOfPile && cnt>ACK_PILE_MIN_COUNT);
           #else
             int ret = MauMe.sendLoRaPKT(lrPkt, false);
           #endif
@@ -1283,8 +1374,8 @@ int MauMeClass::saveReceivedPackets(){
             #ifdef MAUME_DEBUG // #endif
               Serial.println(" # NODE RECEIVE : "+String(list->CRC32));
             #endif
-            if(!fileExists(SPIFFS, MauMe.spiMutex, String("/RECMES/"+String(list->CRC32)+".bin").c_str())){
-              MauMe.Log("-RECV MMM: "+String(list->CRC32)+":"+MauMe.getPKTType(list->PCKTTYP)+"("+String(list->PCKTTYP)+","+String(list->TX_POW)+","+String(list->NB_TX)+","+String(list->NB_MSG)+","+String(list->NB_ACK)+")");   
+            if(!fileExists(SPIFFS, MauMe.spiMutex, String("/RECMES/"+String(list->CRC32)+".bin").c_str())){ // ",PW"+String(list->TX_POW)+",TX"+String(list->NB_TX)+
+              MauMe.Log("-RECV MMM: "+String(list->CRC32)+":"+MauMe.getPKTType(list->PCKTTYP)+"(TYP"+String(list->PCKTTYP)+","+String(list->NB_MSG)+","+String(list->NB_ACK)+")");   
               strHdr->NHP += 1;
               if(MauMe.saveLoRaPkt("/RECMES/", list, false)){
                 nbMessagesArrived++;
@@ -1298,7 +1389,7 @@ int MauMeClass::saveReceivedPackets(){
                 #endif
               }
             }else{
-              MauMe.Log("-RCPY MMM: "+String(list->CRC32)+":"+MauMe.getPKTType(list->PCKTTYP)+"("+String(list->PCKTTYP)+","+String(list->TX_POW)+","+String(list->NB_TX)+","+String(list->NB_MSG)+","+String(list->NB_ACK)+")");   
+              MauMe.Log("-RCPY MMM: "+String(list->CRC32)+":"+MauMe.getPKTType(list->PCKTTYP)+"(TYP"+String(list->PCKTTYP)+",PW"+String(list->TX_POW)+",TX"+String(list->NB_TX)+","+String(list->NB_MSG)+"MSG,"+String(list->NB_ACK)+"ACK)");   
               #ifdef MAUME_DEBUG // #endif
                 Serial.println("****************************************\n MESSAGE ALREADY RECEIVED ! ("+String(list->CRC32)+")\n****************************************");
               #endif
@@ -1318,7 +1409,7 @@ int MauMeClass::saveReceivedPackets(){
             #endif  // MMM_APPTYP_DUM
             if(strHdr->NHP<254 && !fileExists(SPIFFS, MauMe.spiMutex, String("/ACKSSENT/"+String(list->CRC32)+".bin").c_str())){
               if(MauMe.isMessageArrived(strHdr->SEND)){          // this is to check if need save packet as sent by this node !!!
-                MauMe.Log("-SVNG MMM:/NODEPKTS/"+String(list->CRC32)+":"+MauMe.getPKTType(list->PCKTTYP)+"("+String(list->PCKTTYP)+","+String(list->TX_POW)+","+String(list->NB_TX)+","+String(list->NB_MSG)+","+String(list->NB_ACK)+")");   
+                //MauMe.Log("-SVNG MMM:/NODEPKTS/"+String(list->CRC32)+":"+MauMe.getPKTType(list->PCKTTYP)+"(TYP"+String(list->PCKTTYP)+",PW"+String(list->TX_POW)+",TX"+String(list->NB_TX)+","+String(list->NB_MSG)+"MSG,"+String(list->NB_ACK)+"ACK)");   
                 MauMe.saveLoRaPkt("/NODEPKTS/", list, false);    // leave it there !
               }else{
                 strHdr->NHP += 1;
@@ -1346,7 +1437,7 @@ int MauMeClass::saveReceivedPackets(){
               MauMeACK_0 * mmAck = NULL;
               mmAck = MauMe.makeMauMeACK_0(strHdr->NHP+1, ACK0_FRMT, ACK0_TYPE_SH, strHdr->CRC32);
               if(mmAck != NULL){
-                MauMe.Log("-ACK PKT:/ACKS2SEND/"+String(mmAck->CRC32)+" for PKT "+String(list->CRC32)+":"+MauMe.getACKType(mmAck->TYPE)+"("+String(list->PCKTTYP)+","+String(list->TX_POW)+","+String(list->NB_TX)+","+String(list->NB_MSG)+","+String(list->NB_ACK)+")");   
+                MauMe.Log("-INJCT ACK for PKT:/ACKS2SEND/"+String(mmAck->CRC32)+" for PKT "+String(list->CRC32)+":"+MauMe.getACKType(mmAck->TYPE)+"(TYP"+String(list->PCKTTYP)+",PW"+String(list->TX_POW)+",TX"+String(list->NB_TX)+","+String(list->NB_MSG)+"MSG,"+String(list->NB_ACK)+"ACK)");   
                 MauMe.saveLoRaACK_0("/ACKS2SEND/", mmAck, false);
                 free(mmAck);mmAck = NULL;
               }else{Serial.println(" #< Failed saving ACK of PKT : "+String(strHdr->CRC32));}
@@ -1413,7 +1504,7 @@ int MauMeClass::saveReceivedPackets(){
             pos += sizeof(MauMeACK_0);            
           }
           if(count > 0){
-            MauMe.Log("-UNPL ACKS: from PKT "+String(list->CRC32)+" UNPLD "+String(count)+".");   
+            // MauMe.Log("-UNPL ACKS: from PKT "+String(list->CRC32)+" UNPLD "+String(count)+".");   
           }
         }else{                                                             //      ACK PILE OR GEN PACKET ?
           list->PCKTTYP = MM_PKT_TYPE_PILE;                                 // Assume it is...
@@ -1494,7 +1585,7 @@ int MauMeClass::saveReceivedPackets(){
             byteCount += sizeof(MauMeACK_0);
           }
           if(count > 0){
-            MauMe.Log("-UNPL ACKS: from PKT "+String(list->CRC32)+" UNPLD "+String(count)+".");   
+            // MauMe.Log("-UNPL ACKS: from PKT "+String(list->CRC32)+" UNPLD "+String(count)+".");   
           }
           if(ackPile){
             #ifdef ACK_PKTS_OF_ACKS   //  #endif
@@ -1506,7 +1597,7 @@ int MauMeClass::saveReceivedPackets(){
                 //list->CRC32 = getCRC32FromChars((char*)&list->DAT[0], sizeof(MauMeACK_0));
                 MauMeACK_0 * headAck = (MauMeACK_0 *)&list->DAT[0];
                 mmAck = MauMe.makeMauMeACK_0(1, ACK0_FRMT, ACK0_TYPE_PL, headAck->CRC32);
-                MauMe.Log("-ACK OF PILE: "+String(mmAck->CRC32)+" for PILE "+String(list->CRC32)+":"+MauMe.getACKType(mmAck->TYPE)+".");                   
+                // MauMe.Log("-ACK OF PILE: "+String(mmAck->CRC32)+" for PILE "+String(list->CRC32)+":"+MauMe.getACKType(mmAck->TYPE)+".");                   
                 if(mmAck != NULL){
                   MauMe.saveLoRaACK_0("/ACKS2SEND/", mmAck, true);
                   free(mmAck);mmAck = NULL;
@@ -1593,8 +1684,8 @@ void MauMeClass::LoRaTask( void * pvParameters ){
         LoRa_PKT * lrPkt = NULL;
         xSemaphoreTakeRecursive(MauMe.spiMutex, portMAX_DELAY);      
           lrPkt = MauMe.getCurrentLoRaPkt();
-        xSemaphoreGiveRecursive(MauMe.spiMutex);
-        MauMe.Log("-RCV LORA PKT: "+String(lrPkt->CRC32)+":"+MauMe.getPKTType(lrPkt->PCKTTYP)+"("+String(lrPkt->PCKTTYP)+","+String(lrPkt->TX_POW)+","+String(lrPkt->NB_TX)+","+String(lrPkt->NB_MSG)+","+String(lrPkt->NB_ACK)+")");   
+        xSemaphoreGiveRecursive(MauMe.spiMutex); // +",PW"+String(lrPkt->TX_POW)+",TX"+String(lrPkt->NB_TX)
+        MauMe.Log("-RCV LORA PKT: "+String(lrPkt->CRC32)+":"+MauMe.getPKTType(lrPkt->PCKTTYP)+"(TYP"+String(lrPkt->PCKTTYP)+","+String(lrPkt->NB_MSG)+"MSG,"+String(lrPkt->NB_ACK)+"ACK)");   
         xSemaphoreTakeRecursive(MauMe.pcktListSemaphore, portMAX_DELAY);
           lrPkt->next = (LoRa_PKT *)MauMe.receivedPackets;
           MauMe.receivedPackets = lrPkt;
@@ -1665,10 +1756,7 @@ IPAddress MauMeClass::getIPFromString(const char * strIP, int len){
   int Part = 0;
   for(int i=0; i<len; i++){
     char c = strIP[i];
-    if(c == '.'){
-      Part++;
-      continue;
-    }
+    if(c == '.'){Part++;continue;}
     Parts[Part] *= 10;
     Parts[Part] += c - '0';
   }
@@ -1743,7 +1831,7 @@ void MauMeClass::oledMauMeMessage(String message, bool doFlip){
     MauMe.display->setFont(ArialMT_Plain_10);
     MauMe.display->setTextAlignment(TEXT_ALIGN_LEFT);
     MauMe.display->clear();
-    MauMe.display->drawXbm(MauMe.display->width()-4 - UPF_Logo_Width, 3, UPF_Logo_Width, UPF_Logo_Height, (const uint8_t*)&UPF_Logo_Bits); 
+    MauMe.display->drawXbm(MauMe.display->width() -4 -UPF_Logo_Width, 3, UPF_Logo_Width, UPF_Logo_Height, (const uint8_t*)&UPF_Logo_Bits); 
     MauMe.display->setFont(ArialMT_Plain_10);
     MauMe.display->drawString(3,  4, " Mau-Me Node");
     MauMe.display->drawString(3, 20, "   UPF 2020");
@@ -1888,7 +1976,7 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getWebPage(AsyncWebServerRequest *re
       <meta name="application-name" content="Mau-Me"><meta name="msapplication-TileColor" content="#ffffff"><meta name="theme-color" content="#ffffff">
       <style type="text/css">
       html,body{font-family:Verdana,sans-serif;font-size:15px;line-height:1.5}html{overflow-x:hidden}
-      h1{font-size:36px}h2{font-size:30px}h3{font-size:24px}h4{font-size:20px}h5{font-size:18px}h6{font-size:16px}.w3-serif{font-family:serif}
+      h1{font-size:36px}h2{font-size:30px}h3{font-size:24px}h4{font-size:20px}h5{font-size:18px}h6{font-size:15px}.w3-serif{font-family:serif}
       h1,h2,h3,h4,h5,h6{font-family:"Segoe UI",Arial,sans-serif;font-weight:400;margin:10px 0}.w3-wide{letter-spacing:4px}
       h2{color:dodgerblue;}h3{color:darkslategray;}h4{color:darkcyan;}h5{color:midnightblue;}
       body{background-color: cornsilk;}
@@ -1897,7 +1985,7 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getWebPage(AsyncWebServerRequest *re
       </head><body><div><h2 align="center"><b>Mau-Me<form action="/admin"><input type="image" src="/WWW/Logo-MMM-color.png" alt="Admin Form" width="100" align="right"/></form></b></h2></div>
     )rawliteral");
   //----------------------------------------------
-  response->print("<h4><b>&#160;LoRa SMS - UPF 2020</b></h4><h4><b>&#160;&#160;&#160;&#160;&#160;&#160;Me: "+MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE)+"</b></h4>");
+  response->print("<b><h4>&#160;LoRa SMS - UPF 2020</h4><h5>&#160;&#160;&#160;&#160;&#160;&#160;My phone address: <button onclick=\"copyClientAddress()\" align=\"right\">Copy</button></h5><h5 align=\"center\">"+MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE)+"</h5></b>");
   //--------------  PARAM_TYPE  ------------------------------------ 
   response->print(R"rawliteral(<h6>&#160;&#160;&#160;&#160;&#160;&#160; SMS 64 symbols max !&#160;&#160;&#160;&#160;<button onClick="window.location.reload();" align="right">Refresh Page</button></h6>
     <div style="background-color: seashell;padding:6px 10px 8px;border-width:1px;border-radius:10px;border-style:solid;border-color:lightsteelblue;"><h3><form action="/get">To&#160;&#160;&#160;&#160;:&#160; <input type="text" name="DEST"><br/>&#13;Text: &#160;<br/>&#13;&#160;&#160;&#160;&#160;&#160;<textarea name="MESS" rows="2" cols="32" maxlength="64"></textarea><br/>&#13;
@@ -1910,7 +1998,12 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getWebPage(AsyncWebServerRequest *re
   //--------------------------------------------------
   response->print(R"rawliteral(</h5></div><div align="right"><button onClick="window.location.reload();" align="right">Refresh Page</button></div>
     <div><h2 align="center"><form action="/"><input type="image" src="/WWW/Logo-UPF-color.png" alt="Home Page" width="100" align="center"/></form></h2></div>
-    </body></html>)rawliteral");
+    )rawliteral");
+  response->print(R"rawliteral(<script>
+      function copyClientAddress(){var input = document.createElement('input');input.setAttribute('value', ")rawliteral");
+  response->print(MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE));  
+  response->print(R"rawliteral(");document.body.appendChild(input);input.select();var result = document.execCommand('copy');
+        document.body.removeChild(input);window.alert("Copied !");}</script></body></html>)rawliteral");
   //--------------------------------------------------
   return response;
 }
@@ -1928,7 +2021,7 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getAdminPage(AsyncWebServerRequest *
     <meta name="application-name" content="Mau-Me"><meta name="msapplication-TileColor" content="#ffffff"><meta name="theme-color" content="#ffffff">
     <style type="text/css">
       html,body{font-family:Verdana,sans-serif;font-size:15px;line-height:1.5}html{overflow-x:hidden}
-      h1{font-size:36px}h2{font-size:30px}h3{font-size:24px}h4{font-size:20px}h5{font-size:18px}h6{font-size:16px}.w3-serif{font-family:serif}
+      h1{font-size:36px}h2{font-size:30px}h3{font-size:24px}h4{font-size:20px}h5{font-size:18px}h6{font-size:15px}.w3-serif{font-family:serif}
       h1,h2,h3,h4,h5,h6{font-family:"Segoe UI",Arial,sans-serif;font-weight:400;margin:10px 0}.w3-wide{letter-spacing:4px}
       h2{color:orangered;}h3{color:darkred;}h4{color:firebrick;}h5{color:darkslategray;}
       body{background-color: cornsilk;}
@@ -1937,21 +2030,21 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getAdminPage(AsyncWebServerRequest *
       </head><body><div><h2 align="center"><b>Mau-Me Admin</b><form action="/"><input type="image" src="/WWW/Logo-MMM-color.png" alt="Client Form" width="100" align="right"/></form></h2></div>
     )rawliteral");
   //----------------------------------------------
-  response->print("<h4><b>&#160;LoRa SMS - UPF 2020</b></h4><br/><h4><b>&#160;&#160;&#160;Node "+MauMe.myMacAddress+"<br/>");
-  response->print(MauMe.addressBuffer2MacFormat(myByteAddress.dat, MM_ADDRESS_SIZE)+"</b></h4>");
-  response->print("<h5><b>&#160;&#160;&#160;&#160;&#160;&#160;Me: "+MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE)+"</b>");
-  response->print(R"rawliteral(&#160;&#160;<button onClick="window.location.reload();" align="right">Refresh Page</button></h5>)rawliteral");
+  response->print("<h4><b>&#160;LoRa SMS - UPF 2020</b></h4><br/><h5><b>&#160;&#160;&#160;Node "+MauMe.myMacAddress+"<br/>");
+  response->print("Node address: <button onclick=\"copyNodeAddress()\" align=\"right\">Copy</button></h5><h5 align=\"center\">"+MauMe.addressBuffer2MacFormat(MauMe.myByteAddress.dat, MM_ADDRESS_SIZE)+"</b></h5>");
+  response->print("<b><h5>&#160;&#160;&#160;&#160;&#160;&#160;My phone address: <button onclick=\"copyClientAddress()\" align=\"right\">Copy</button></h5><h5 align=\"center\">"+MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE)+"</h5></b>");
+  response->print(R"rawliteral(<h5>&#160;&#160;<button onClick="window.location.reload();" align="right">Refresh Page</button></h5>)rawliteral");
   //---------------------------------------------- 
   response->print(R"rawliteral(<h4 align="Left">MauMe Process Parameters:</h4><h5 align="center"><form action="/setValues">
-      Power Min (1)&#160;&#160;&#160;&#160;&#160;&#160;:<input type="text" name="PRCSS_TX_POW_MIN" maxlength="6" value=")rawliteral");
+      Power Min (2)&#160;&#160;&#160;&#160;&#160;&#160;:<input type="text" name="PRCSS_TX_POW_MIN" maxlength="6" value=")rawliteral");
       response->print(int(MauMe.MM_TX_POWER_MIN));
       response->print(R"rawliteral("></br>Power Max (20)&#160;&#160;&#160;:<input type="text" name="PRCSS_TX_POW_MAX" maxlength="6" value=")rawliteral");
       response->print(int(MauMe.MM_TX_POWER_MAX));
       response->print(R"rawliteral("></br>
-      Delay Min (mins):<input type="text" name="PRCSS_MIN_DELAY" maxlength="10" value=")rawliteral");
-      response->print(int(MauMe.MM_PCKT_PROCESS_STATIC_DELAY/60000));
-      response->print(R"rawliteral("></br>Delay Max (mins):<input type="text" name="PRCSS_MAX_DELAY" maxlength="10" value=")rawliteral");
-      response->print(int(float(MauMe.MM_PCKT_PROCESS_STATIC_DELAY+MauMe.MM_PCKT_PROCESS_RANDOM_DELAY)/60000));
+      Delay Min (s):<input type="text" name="PRCSS_MIN_DELAY" maxlength="10" value=")rawliteral");
+      response->print(int(MauMe.MM_PCKT_PROCESS_STATIC_DELAY/1000));
+      response->print(R"rawliteral("></br>Delay Max (s):<input type="text" name="PRCSS_MAX_DELAY" maxlength="10" value=")rawliteral");
+      response->print(int(float(MauMe.MM_PCKT_PROCESS_STATIC_DELAY+MauMe.MM_PCKT_PROCESS_RANDOM_DELAY)/1000));
       response->print(R"rawliteral("></br><input type="submit" id="submitBtn" value="Set values" name="setTXValues"/><br/>
       </form></h5>)rawliteral");   
   response->print(R"rawliteral(<h4 align="Left">MauMe Autosave Frequency:</h4><h5 align="center"><form action="/setValues">
@@ -1983,9 +2076,23 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getAdminPage(AsyncWebServerRequest *
   response->print("<h4><b>RECACKS files   : </b></h4><h6>"+listDir2Str(SPIFFS, MauMe.spiMutex, "/RECACKS",   "<br/>")+"</h6>");
   response->print("<h4><b>WEB DATA files  : </b></h4><h6>"+listDir2Str(SPIFFS, MauMe.spiMutex, "/WWW",       "<br/>")+"</h6>");
   //--------------------------------------------------
+  /*
+  )rawliteral");
+  response->print(MauMe.addressBuffer2MacFormat(MauMe.myByteAddress.dat, MM_ADDRESS_SIZE)); // window.alert("Hello World 0");        
+  response->print(R"rawliteral(
+  window.alert("Hello World 1");
+  response->print(MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE));      // window.alert("Hello World 2"); 
+  */
   response->print(R"rawliteral(<div align="right"><button onClick="window.location.reload();" align="right">Refresh Page</button></div>
-    <div><h2 align="center"><form action="/"><input type="image" src="/WWW/Logo-UPF-color.png" alt="Home Page" width="100" align="center"/></form></h2></div>
-    </body></html>)rawliteral");
+    <div><h2 align="center"><form action="/"><input type="image" src="/WWW/Logo-UPF-color.png" alt="Home Page" width="100" align="center"/></form></h2></div>)rawliteral");
+  response->print(R"rawliteral(<script>
+      function copyNodeAddress(){var input = document.createElement('input');input.setAttribute('value', ")rawliteral");
+  response->print(MauMe.addressBuffer2MacFormat(MauMe.myByteAddress.dat, MM_ADDRESS_SIZE)); // window.alert("Hello World 0");        
+  response->print(R"rawliteral(");document.body.appendChild(input);input.select();var result = document.execCommand('copy');
+        document.body.removeChild(input);window.alert("Copied !"); }function copyClientAddress(){var input = document.createElement('input');input.setAttribute('value', ")rawliteral");
+  response->print(MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE));  
+  response->print(R"rawliteral(");document.body.appendChild(input);input.select();var result = document.execCommand('copy');
+        document.body.removeChild(input);window.alert("Copied !");}</script></body></html>)rawliteral");
   //--------------------------------------------------
   return response;
 }
@@ -2003,7 +2110,7 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getSimusPage(AsyncWebServerRequest *
     <meta name="application-name" content="Mau-Me"><meta name="msapplication-TileColor" content="#ffffff"><meta name="theme-color" content="#ffffff">
     <style type="text/css"> // seashell
       html,body{font-family:Verdana,sans-serif;font-size:15px;line-height:1.5}html{overflow-x:hidden}
-      h1{font-size:36px}h2{font-size:30px}h3{font-size:24px}h4{font-size:20px}h5{font-size:18px}h6{font-size:16px}.w3-serif{font-family:serif}
+      h1{font-size:36px}h2{font-size:30px}h3{font-size:24px}h4{font-size:20px}h5{font-size:18px}h6{font-size:15px}.w3-serif{font-family:serif}
       h1,h2,h3,h4,h5,h6{font-family:"Segoe UI",Arial,sans-serif;font-weight:400;margin:10px 0}.w3-wide{letter-spacing:4px}
       h2{color:limegreen;}h3{color:darkgreen;}h4{color:darkolivegreen;}h5{color:saddlebrown;}
       body{background-color: cornsilk;}
@@ -2013,10 +2120,10 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getSimusPage(AsyncWebServerRequest *
     )rawliteral");
   //----------------------------------------------
   //response->print("<h3><b>&#160;LoRa SMS - UPF 2020</b><br/><h3><b>&#160;&#160;&#160;Node: "+addressBuffer2MacFormat(myByteAddress.dat, MM_ADDRESS_SIZE)+"</b></h3>");
-  response->print("<h4><b>&#160;LoRa SMS - UPF 2020</b></h4><br/><h4><b>&#160;&#160;&#160;Node "+MauMe.myMacAddress+"<br/>");
-  response->print(MauMe.addressBuffer2MacFormat(myByteAddress.dat, MM_ADDRESS_SIZE)+"</b></h4>");  
-  response->print("<h5><b>&#160;&#160;&#160;&#160;&#160;&#160;Me: "+MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE)+"</b>");
-  response->print(R"rawliteral(&#160;&#160;<button onClick="window.location.reload();" align="right">Refresh Page</button></h5>)rawliteral");
+  response->print("<h4><b>&#160;LoRa SMS - UPF 2020</b></h4><br/><h5><b>&#160;&#160;&#160;Node "+MauMe.myMacAddress+"<br/>Node address : <button onclick=\"copyNodeAddress()\" align=\"right\">Copy</button>");
+  response->print(MauMe.addressBuffer2MacFormat(MauMe.myByteAddress.dat, MM_ADDRESS_SIZE)+"</b></h5>");  
+  response->print("<b><h5>&#160;&#160;&#160;&#160;&#160;&#160;My phone address:</h5><h5 align=\"center\">"+MauMe.addressBuffer2MacFormat(macFrom.dat, MM_ADDRESS_SIZE));
+  response->print(R"rawliteral(&#160;&#160;<button onClick="window.location.reload();" align="right">Refresh Page</button></h5></b>)rawliteral");
   //----------------------------------------------
   //File file = fileOpenFor(SPIFFS, MauMe.spiMutex, MauMe.logFile.c_str(), FILE_READ); 
   // doAlternate   percentActivity  alternateInterval PRCT_ACTIVITY INTER_ACTIVITY  actAltAct deActAltAct
@@ -2024,17 +2131,17 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getSimusPage(AsyncWebServerRequest *
     response->print(R"rawliteral(<h4 align="center"><form action="/activateSim">
       % activity :<input type="text" name="PRCT_ACTIVITY" maxlength="12" value=")rawliteral");
       response->print(MauMe.percentActivity);
-      response->print(R"rawliteral("></br>Interval  :<input type="text" name="INTER_ACTIVITY" maxlength="12" value=")rawliteral");
-      response->print(int(MauMe.alternateInterval/60000));
-      response->print(R"rawliteral("> minutes.</br><input type="submit" id="submitBtn" value="Activate Alternating" name="actAltAct"/><br/>
+      response->print(R"rawliteral("></br>Interval (s) :<input type="text" name="INTER_ACTIVITY" maxlength="12" value=")rawliteral");
+      response->print(int(MauMe.alternateInterval/1000));
+      response->print(R"rawliteral("></br><input type="submit" id="submitBtn" value="Activate Alternating" name="actAltAct"/><br/>
       </form></h4>)rawliteral");
   }else{ // actAltAct   deActAltAct
     response->print(R"rawliteral(<h4 align="center"><form action="/activateSim">
       % activity :<input type="text" name="PRCT_ACTIVITY" maxlength="12" value=")rawliteral");
       response->print(MauMe.percentActivity);
-      response->print(R"rawliteral(" readonly> %.</br>Interval  :<input type="text" name="INTER_ACTIVITY" maxlength="12" value=")rawliteral");
-      response->print(int(MauMe.alternateInterval/60000));
-      response->print(R"rawliteral(" readonly> minutes.</br><input type="submit" id="submitBtn" value="De-Activate Alternating" name="deActAltAct"/><br/>
+      response->print(R"rawliteral(" readonly> %.</br>Interval (s) :<input type="text" name="INTER_ACTIVITY" maxlength="12" value=")rawliteral");
+      response->print(int(MauMe.alternateInterval/1000));
+      response->print(R"rawliteral(" readonly></br><input type="submit" id="submitBtn" value="De-Activate Alternating" name="deActAltAct"/><br/>
       </form></h4>)rawliteral");
   }
   if(MauMe.sendDummies){
@@ -2049,11 +2156,11 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getSimusPage(AsyncWebServerRequest *
   }else{
     response->print(R"rawliteral(
       <h4 align="center"><form action="/activateSim">
-      TX static delay :<input type="text" name="TX_STATIC_DELAY" maxlength="12" value=")rawliteral");
-      response->print(int(MauMe.DUMMY_PROCESS_STATIC_DELAY/60000));
-      response->print(R"rawliteral(">min.</br>TX random delay :<input type="text" name="TX_RANDOM_DELAY" maxlength="12" value=")rawliteral");
-      response->print(int(MauMe.DUMMY_PROCESS_RANDOM_DELAY/60000));
-      response->print(R"rawliteral(">min.</br>TRGT ADDR :<input type="text" name="TRGT_ADDR" maxlength="40"value=")rawliteral");
+      TX static delay (s) :<input type="text" name="TX_STATIC_DELAY" maxlength="12" value=")rawliteral");
+      response->print(int(MauMe.DUMMY_PROCESS_STATIC_DELAY/1000));
+      response->print(R"rawliteral("></br>TX random delay (s) :<input type="text" name="TX_RANDOM_DELAY" maxlength="12" value=")rawliteral");
+      response->print(int(MauMe.DUMMY_PROCESS_RANDOM_DELAY/1000));
+      response->print(R"rawliteral("></br>TRGT ADDR :<input type="text" name="TRGT_ADDR" maxlength="40"value=")rawliteral");
       response->print(MauMe.dummyTargetAddress);
       response->print(R"rawliteral("></br>Nb. of TX :<input type="text" name="NB_DUM" maxlength="6" value=")rawliteral");
       response->print(String(MauMe.nbDummyPkts));
@@ -2083,7 +2190,12 @@ AsyncResponseStream * IRAM_ATTR MauMeClass::getSimusPage(AsyncWebServerRequest *
   }
   response->print(R"rawliteral(<div align="right"><button onClick="window.location.reload();" align="right">Refresh Page</button></div>
     <div><h2 align="center"><form action="/"><input type="image" src="/WWW/Logo-UPF-color.png" alt="Home Page" width="100" align="center"/></form></h2></div>
-    </form></h2></div></body></html>)rawliteral");
+    </form></h2></div>)rawliteral");
+  response->print(R"rawliteral(<script>
+      function copyNodeAddress(){var input = document.createElement('input');input.setAttribute('value', ")rawliteral");
+  response->print(MauMe.addressBuffer2MacFormat(MauMe.myByteAddress.dat, MM_ADDRESS_SIZE)); // window.alert("Hello World 0");        
+  response->print(R"rawliteral(");document.body.appendChild(input);input.select();var result = document.execCommand('copy');
+        document.body.removeChild(input);window.alert("Copied !"); }</script></body></html>)rawliteral");
   //--------------------------------------------------
   return response;
 }
@@ -2124,15 +2236,15 @@ void MauMeClass::setupWebServer(){
           #endif
           request->send(response);
         }else{
-          Serial.println(" -> Error serving http.");
+          Serial.println(" -> Error serving http. RESP NULL.");
           request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Could not assemble data !</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
         }
       }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. ADDR NULL.");
         request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Cannot identify client. Reconnect !</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
       }
     }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. NOT SERVING.");
         request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Out of order.</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
       }
   });
@@ -2169,15 +2281,15 @@ void MauMeClass::setupWebServer(){
         if(response != NULL){
           request->send(response);
         }else{
-          Serial.println(" -> Error serving http.");
+          Serial.println(" -> Error serving http. NULL.");
           request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Could not assemble data !</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
         }
       }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. ADDR NULL.");
         request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Cannot identify client. Reconnect !</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
       }
     }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. NOT SERVING.");
         request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Out of order.</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
       }
   });
@@ -2364,15 +2476,15 @@ void MauMeClass::setupWebServer(){
         if(response != NULL){
           request->send(response);          
         }else{
-          Serial.println(" -> Error serving http.");
+          Serial.println(" -> Error serving http. SIMUS RESP NULL.");
           request->send(200, "text/html", "<br><h2style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Could not assemble data !</h2><br><br><a href=\"/simus\">Return to Mau-Me Page</a>");
         }
       }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. SIMUS ADDR NULL.");
         request->send(200, "text/html", "<br><h2style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Cannot identify client. Reconnect !</h2><br><br><a href=\"/simus\">Return to Mau-Me Page</a>");
       }
     }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. SIMUS NOT SERVING.");
         request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Out of order.</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
       }
   });
@@ -2430,7 +2542,7 @@ void MauMeClass::setupWebServer(){
                 Serial.println(" ----------------------- PRCSS_MIN_DELAY "+request->getParam("PRCSS_MIN_DELAY")->value()+" -----");
               #endif
               // MM_PROCESS_MIN_DELAY  MM_PROCESS_MIN_RANDOM_DELAY
-              MauMe.MM_PCKT_PROCESS_STATIC_DELAY = request->getParam("PRCSS_MIN_DELAY")->value().toInt()*60000;
+              MauMe.MM_PCKT_PROCESS_STATIC_DELAY = request->getParam("PRCSS_MIN_DELAY")->value().toInt()*1000;
               MauMe.MM_PCKT_PROCESS_STATIC_DELAY = max(MM_PROCESS_MIN_DELAY, MauMe.MM_PCKT_PROCESS_STATIC_DELAY);
             }else{
               #ifdef MAUME_DEBUG  // #endif
@@ -2441,7 +2553,7 @@ void MauMeClass::setupWebServer(){
               #ifdef MAUME_DEBUG  // #endif
                 Serial.println(" ----------------------- PRCSS_MAX_DELAY "+request->getParam("PRCSS_MAX_DELAY")->value()+" -----");
               #endif
-              MauMe.MM_PCKT_PROCESS_RANDOM_DELAY = request->getParam("PRCSS_MAX_DELAY")->value().toInt()*60000 - MauMe.MM_PCKT_PROCESS_STATIC_DELAY;
+              MauMe.MM_PCKT_PROCESS_RANDOM_DELAY = request->getParam("PRCSS_MAX_DELAY")->value().toInt()*1000 - MauMe.MM_PCKT_PROCESS_STATIC_DELAY;
               MauMe.MM_PCKT_PROCESS_RANDOM_DELAY = max(MM_PROCESS_MIN_RANDOM_DELAY, MauMe.MM_PCKT_PROCESS_RANDOM_DELAY);
             }else{
               #ifdef MAUME_DEBUG  // #endif
@@ -2476,11 +2588,11 @@ void MauMeClass::setupWebServer(){
           request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Request executed ! </h2><br><br><a href=\"/admin\">Return to Home Page</a>");
         #endif        
       }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. SET ADDR NULL.");
         request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Cannot identify client. Reconnect !</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
       }
     }else{
-      Serial.println(" -> Error serving http.");
+      Serial.println(" -> Error serving http. SET NOT SERVING.");
       request->send(200, "text/html", "<br><h2 style=\"font-size:30px;font-family:\"Segoe UI\",Arial,sans-serif;font-weight:400;margin:10px 0;color:orangered;\"> MauMe Node "+MauMe.MyAddress+" - Out of order.</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
     }
   });
@@ -2524,7 +2636,7 @@ void MauMeClass::setupWebServer(){
             #ifdef MAUME_DEBUG  // #endif
               Serial.println(" ----------------------- INTER_ACTIVITY "+request->getParam("INTER_ACTIVITY")->value()+" -----");
             #endif
-            MauMe.alternateInterval = request->getParam("INTER_ACTIVITY")->value().toInt()*60000;
+            MauMe.alternateInterval = request->getParam("INTER_ACTIVITY")->value().toInt()*1000;
           }else{
             #ifdef MAUME_DEBUG  // #endif
               Serial.println(" ------------------------------------------- NO INTER_ACTIVITY IN FORM -----");
@@ -2555,7 +2667,7 @@ void MauMeClass::setupWebServer(){
             #ifdef MAUME_DEBUG  // #endif
               Serial.println(" ----------------------- TX_STATIC_DELAY "+request->getParam("TX_STATIC_DELAY")->value()+" -----");
             #endif
-            MauMe.DUMMY_PROCESS_STATIC_DELAY = request->getParam("TX_STATIC_DELAY")->value().toInt()*60000;    
+            MauMe.DUMMY_PROCESS_STATIC_DELAY = request->getParam("TX_STATIC_DELAY")->value().toInt()*1000;    
             MauMe.DUMMY_PROCESS_STATIC_DELAY = max(DUMMY_PROCESS_MIN_STATIC_DELAY, MauMe.DUMMY_PROCESS_STATIC_DELAY);        
           }else{
             #ifdef MAUME_DEBUG  // #endif
@@ -2566,7 +2678,7 @@ void MauMeClass::setupWebServer(){
             #ifdef MAUME_DEBUG  // #endif
               Serial.println(" ----------------------- TX_RANDOM_DELAY "+request->getParam("TX_RANDOM_DELAY")->value()+" -----");
             #endif
-            MauMe.DUMMY_PROCESS_RANDOM_DELAY = request->getParam("TX_RANDOM_DELAY")->value().toInt()*60000;      
+            MauMe.DUMMY_PROCESS_RANDOM_DELAY = request->getParam("TX_RANDOM_DELAY")->value().toInt()*1000;      
             MauMe.DUMMY_PROCESS_RANDOM_DELAY = max(DUMMY_PROCESS_MIN_RANDOM_DELAY, MauMe.DUMMY_PROCESS_RANDOM_DELAY);      
           }else{
             #ifdef MAUME_DEBUG  // #endif
@@ -2597,11 +2709,11 @@ void MauMeClass::setupWebServer(){
       }
       #endif
       }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. ACT SIM ADDR NULL.");
         request->send(200, "text/html", "<br><h2> MauMe Node "+MauMe.MyAddress+" - Cannot identify client. Reconnect !</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
       }
     }else{
-      Serial.println(" -> Error serving http.");
+      Serial.println(" -> Error serving http. ACT SIM NOT SERVING.");
       request->send(200, "text/html", "<br><h2> MauMe Node "+MauMe.MyAddress+" - Out of order.</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
     }
   });
@@ -2612,7 +2724,7 @@ void MauMeClass::setupWebServer(){
       String contentType = MauMe.getContentType(url);
       request->send(SPIFFS, url, contentType);
     }else{
-        Serial.println(" -> Error serving http.");
+        Serial.println(" -> Error serving http. NOT SERVING RESSOURCE :" + String(request->url()) +".");
         request->send(200, "text/html", "<br><h2> MauMe Node "+MauMe.MyAddress+" - Out of order.</h2><br><br><a href=\"/\">Return to Mau-Me Page</a>");
       }
   });
@@ -2699,8 +2811,8 @@ void MauMeClass::MauMeTask(void * pvParameters) {
           dummyLoRaPkt->next = (LoRa_PKT *)MauMe.receivedPackets;
           MauMe.receivedPackets = dummyLoRaPkt;
         xSemaphoreGiveRecursive(MauMe.pcktListSemaphore);
-        Serial.println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");      
-        MauMe.Log("-DUMY PKT: "+String(dummyLoRaPkt->CRC32)+"("+String(dummyLoRaPkt->PCKTTYP)+","+String(dummyLoRaPkt->TX_POW)+","+String(dummyLoRaPkt->NB_TX)+","+String(dummyLoRaPkt->NB_MSG)+","+String(dummyLoRaPkt->NB_ACK)+")");
+        Serial.println("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");      // +",PW"+String(dummyLoRaPkt->TX_POW)+",TX"+String(dummyLoRaPkt->NB_TX)
+        MauMe.Log("-INJCT DUMY PKT: "+String(dummyLoRaPkt->CRC32)+"(Typ"+String(dummyLoRaPkt->PCKTTYP)+","+String(dummyLoRaPkt->NB_MSG)+"MSG,"+String(dummyLoRaPkt->NB_ACK)+"ACK)");
         MauMe.nbDummyPkts -=1;        
         MauMe.dummySendInterval = random(MauMe.DUMMY_PROCESS_STATIC_DELAY, MauMe.DUMMY_PROCESS_STATIC_DELAY+MauMe.DUMMY_PROCESS_RANDOM_DELAY);     // 2-3 secondscleanPackets()  
         MauMe.dummyLastSendTime = millis();            // timestamp the message
@@ -2716,13 +2828,30 @@ void MauMeClass::MauMeTask(void * pvParameters) {
           if(MauMe.nbReceivedPkts > 0){Serial.println(" * Received data saved.");}
           Serial.println("_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ");
         #endif      
+        //---------------------------------------------------------------------------------------------------
+        int ind = 0;
+        MauMe.writeMem(ind++, MauMe.DUMMY_PROCESS_STATIC_DELAY);  
+        MauMe.writeMem(ind++, MauMe.DUMMY_PROCESS_RANDOM_DELAY);
+        MauMe.writeMem(ind++, MauMe.MM_PCKT_PROCESS_STATIC_DELAY);
+        MauMe.writeMem(ind++, MauMe.MM_PCKT_PROCESS_RANDOM_DELAY);
+        MauMe.writeMem(ind++, MauMe.MM_TX_POWER_MIN);
+        MauMe.writeMem(ind++, MauMe.MM_TX_POWER_MAX);
+        MauMe.writeMem(ind++, MauMe.MM_PCKT_SAVE_DELAY);
+        MauMe.writeMem(ind++, (int)MauMe.doAlternate);
+        MauMe.writeMem(ind++, MauMe.percentActivity);
+        MauMe.writeMem(ind++, MauMe.alternateInterval);
+        MauMe.writeMem(ind++, MauMe.dummySendInterval);
+        MauMe.writeMem(ind++, MauMe.nbDummyPkts);
+        MauMe.writeMem(ind++, (int)MauMe.sendDummies); 
+        MauMe.writeString2Mem(ind, MauMe.dummyTargetAddress, MM_ADDRESS_SIZE);
+        // Serial.println(" Wrote str : " + MauMe.dummyTargetAddress);
         MauMe.receivedPacketsLastSaveTime = millis();            // timestamp the message
       }
       //==========================================================================================================
       if (millis() - MauMe.packetsRoutineLastProcessTime > MauMe.packetsRoutineProcessInterval) {
         #ifdef MAUME_DEBUG 
           Serial.println("_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ PROCESS LOOP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ");
-          if(1){
+          if(0){
             listDir(SPIFFS, MauMe.spiMutex, "/PKTS",      0);
             listDir(SPIFFS, MauMe.spiMutex, "/ACKS2SEND", 0);
             listDir(SPIFFS, MauMe.spiMutex, "/RECACKS",   0);
@@ -2733,7 +2862,7 @@ void MauMeClass::MauMeTask(void * pvParameters) {
               listDir(SPIFFS, MauMe.spiMutex, "/RECMES",   0);
             }
           }else{
-            listDir(SPIFFS, MauMe.spiMutex, "/", 0);
+            //listDir(SPIFFS, MauMe.spiMutex, "/", 0);
           }
         #endif
         #ifdef MAUME_DEBUG 
@@ -2749,6 +2878,7 @@ void MauMeClass::MauMeTask(void * pvParameters) {
         #else
           MauMe.processPackets();
         #endif
+               
         // ---------------------------------------- CALLING USER CALBBACK IF ANY ----------------------------
         if(MauMe.nbReceivedPkts > 0){
           if(MauMe._onDelivery){
@@ -2809,13 +2939,17 @@ void MauMeClass::MauMeTask(void * pvParameters) {
     }else{
       MauMe.doRun = true;
     }
+    /*if(MauMe.runDNS){
+      MauMe.dnsServer->processNextRequest();    
+    }*/
   }  
 }
 //----------------------------------------------------------------- FUNCTIONS -----------------------------------------------
 void MauMeClass::setup(long serialSpeed) {
   Serial.begin(serialSpeed);
+  EEPROM.begin(EEPROM_SIZE);    
   while (!Serial); //if just the the basic function, must connect to a computer
-  delay(500);
+  delay(100);
   Serial.println("\n MauMe Node setup in progress...");
   #ifdef MAUME_DEBUG
     randomSeed(analogRead(0));
@@ -2879,7 +3013,7 @@ void MauMeClass::setup(long serialSpeed) {
   }
   delay(1000);  
   //------------------------------------------------------------------------------------------------------
-  if(1){   //  Use this if you want to programmatically erase all files at startup.
+  if(0){   //  Use this if you want to programmatically erase all files at startup.
     int dels = deleteDirectoryFiles(SPIFFS, MauMe.spiMutex, "/NODEPKTS");
     dels += deleteDirectoryFiles(SPIFFS, MauMe.spiMutex,    "/NODEACKS");
     dels += deleteDirectoryFiles(SPIFFS, MauMe.spiMutex,    "/RECMES");
@@ -2896,6 +3030,25 @@ void MauMeClass::setup(long serialSpeed) {
     #endif
   }
   deleteFile(SPIFFS, MauMe.spiMutex, MauMe.logFile.c_str());
+  int ind = 0;
+  int first = MauMe.readMem(ind++);
+  if(first>0){
+    MauMe.DUMMY_PROCESS_STATIC_DELAY = first;  
+    MauMe.DUMMY_PROCESS_RANDOM_DELAY = MauMe.readMem(ind++);
+    MauMe.MM_PCKT_PROCESS_STATIC_DELAY = MauMe.readMem(ind++);
+    MauMe.MM_PCKT_PROCESS_RANDOM_DELAY = MauMe.readMem(ind++);
+    MauMe.MM_TX_POWER_MIN = MauMe.readMem(ind++);
+    MauMe.MM_TX_POWER_MAX = MauMe.readMem(ind++);
+    MauMe.MM_PCKT_SAVE_DELAY = MauMe.readMem(ind++);
+    MauMe.doAlternate = (bool)MauMe.readMem(ind++);
+    MauMe.percentActivity = MauMe.readMem(ind++);
+    MauMe.alternateInterval = MauMe.readMem(ind++);
+    MauMe.dummySendInterval = MauMe.readMem(ind++);
+    MauMe.nbDummyPkts = MauMe.readMem(ind++);
+    MauMe.sendDummies = (bool)MauMe.readMem(ind++);       
+    MauMe.dummyTargetAddress = MauMe.readMem2String(ind, MM_ADDRESS_SIZE);
+    //Serial.println(" Read str : " + str);
+  }
   //---------------------------------------------------------------
   LoRa_JMM.receive();  
   // alternateLastActivationTime  doAlternate   percentActivity  alternateInterval
@@ -2913,12 +3066,18 @@ void MauMeClass::setup(long serialSpeed) {
                     1,
                     &MauMe.mauMeTask,
                     1);
-  delay(500); 
+  delay(250); 
   #ifdef MAUME_DEBUG   // #endif
     Serial.println(" -> MauMe Task set up!\n");    
   #endif
   Serial.println("\n MauMe Node setup done @ "+MauMe.MyAddress+".");
   MauMe.Log(" * MauMe Node setup done @ "+MauMe.MyAddress+" ("+MauMe.myMacAddress+").");   
+
+  
+  /*MauMe.writeMem(0, 6358975);  MauMe.writeMem(1, 2);  MauMe.writeMem(2, 3);  MauMe.writeMem(3, 4);
+
+  Serial.println(" Memory : "+String(MauMe.readMem(0))+","+String(MauMe.readMem(1))+","+String(MauMe.readMem(2))+","+String(MauMe.readMem(3))+".");
+  */
 }
 //-------------------------------------------------------------------------
 MauMeClass MauMe;

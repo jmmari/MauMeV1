@@ -1,4 +1,26 @@
-
+/*
+            MauMe LoRa Multi-Hops Messaging for Arduino
+  
+  Copyright (c) 2020 Jean Martial Mari & Alban Gabillon, University of French Polynesia. 
+  All rights reserved.
+                                                syy/    -yyy   .yyyyyyyyys     /yyyyyyyyy/  
+                                                mMMo    /MMM`  :MMMMMMMMMMdo   yMMMMMMMMMy  
+                                                mMMo    /MMM`  :MMM-````hMMh   yMMm.....``  
+                                                mMMo    /MMM`  :MMM/----dMdo   yMMMMMMMN    
+                                                mMMo    /MMM`  :MMMMMMMMhs     yMMNyyyys    
+                                                mMMo    /MMM`  :MMMs++++.      yMMd         
+                                                mMMmh.`hdMMM`  :MMM.           yMMd         
+                                                ...sMmmMh...   :MMM.           yMMd        
+ 
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+    Lesser General Public License for more details.  
+*/
 //---------------------------------------------------------------------------------------------------------
   #include <SPI.h>
   #include "LoRa_JMM.h"
@@ -31,6 +53,7 @@
   #include "SSD1306.h"
   // #include "md.h"
   #include "mbedtls/md.h"
+  #define EEPROM_SIZE          512
   //---------------------------------------------------- OLED SCREEN PINS and Values
   #define OLED_SDA               4
   #define OLED_SCL              15
@@ -65,7 +88,7 @@
 
   //#define PORT_HTTP        80
   #define MAX_CLIENTS        64  
-  #define DNS_TASK_DELAY    500
+  #define DNS_TASK_DELAY    128
   
   // #define configSUPPORT_STATIC_ALLOCATION   1
   // #define configSUPPORT_DYNAMIC_ALLOCATION  1
@@ -141,8 +164,8 @@
     MauMeHDR_0       HDR;
     char       LOAD[101];
   }MauMePKT_0;
-  #define MM_PROCESS_MIN_DELAY               60000  // milliseconds
-  #define MM_PROCESS_MIN_RANDOM_DELAY        10000  // milliseconds
+  #define MM_PROCESS_MIN_DELAY                1000  // milliseconds
+  #define MM_PROCESS_MIN_RANDOM_DELAY            0  // milliseconds
   //---------------------------------------
   // HTL : 1byte | ACK CRC32: 4 bytes | Format 1 byte | TYPE : 1 FWRD-ACK, 2 REC-ACK | Mess. Hash : 4 bytes | Total : 14
   typedef struct PACKED {
@@ -152,8 +175,8 @@
     unsigned char TYPE;
     uint32_t      HASH;
   }MauMeACK_0;
-  #define DUMMY_PROCESS_MIN_STATIC_DELAY        60000  // milliseconds
-  #define DUMMY_PROCESS_MIN_RANDOM_DELAY        10000  // milliseconds
+  #define DUMMY_PROCESS_MIN_STATIC_DELAY         1000  // milliseconds
+  #define DUMMY_PROCESS_MIN_RANDOM_DELAY            0  // milliseconds
   #define DUMMY_PROCESS_MIN_ADRESS_SIZE            12  // milliseconds
   //---------------------------------------
   typedef struct PACKED {

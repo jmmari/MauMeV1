@@ -36,10 +36,10 @@ public:
   int beginPacket(int implicitHeader = false);
   int endPacket(bool async = false);
 
-  int parsePacket(int size = 0);
-  int packetRssi();
+  int   parsePacket(int size = 0);
+  int   packetRssi();
   float packetSnr();
-  long packetFrequencyError();
+  long  packetFrequencyError();
 
   // from Print
   virtual size_t write(uint8_t byte);
@@ -58,7 +58,6 @@ public:
 #endif
   void idle();
   void sleep();
-
   void setTxPower(int level, int outputPin = PA_OUTPUT_PA_BOOST_PIN);
   void setFrequency(long frequency);
   void setSpreadingFactor(int sf);
