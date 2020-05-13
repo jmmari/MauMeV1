@@ -5,7 +5,7 @@ This library allows creating LoRa nodes executing your code for your application
 
 Please use the example to get started.
 
-Your nodes can use this to exchnages messages 100 bytes long. Each node acts as a relay forwarding messages from all other MauMe nodes using the same LoRa settings. Please do not modify those settings if you want to benefit from the other users'nodes. 
+Your nodes can use this to exchange messages 100 bytes long. Each node acts as a relay forwarding messages from all other MauMe nodes using the same LoRa settings. Please do not modify those settings if you want to benefit from the other users'nodes. 
 
 You should also consider leaving your nodes active longer: the less a node sleeps, the more it can relay messages from your other nodes. 
 
