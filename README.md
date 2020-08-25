@@ -9,23 +9,17 @@ Your nodes can use this to exchange messages 205 bytes long. Each node acts as a
 
 You should also consider leaving your nodes active longer: the less a node sleeps, the more it can relay messages from your other nodes. 
 
-Current tests recommend 25% activity.
+Current tests recommend 50% node activity.
 
-Please call "prepForSleep" method before going to deep sleep, to ensure saving the last received packets.
+Please call "sleepMauMe()" method before going to deep-sleep, to ensure saving the last received packets.
 
 ______________________________________________________________________________________________
  MauMe LoRa Multi-Hops Messaging for Arduino
   
   Copyright (c) 2020 Jean Martial Mari & Alban Gabillon, University of French Polynesia. 
   All rights reserved.
-   syy/    -yyy   .yyyyyyyyys     /yyyyyyyyy/  
-   mMMo    /MMM`  :MMMMMMMMMMdo   yMMMMMMMMMy  
-   mMMo    /MMM`  :MMM-````hMMh   yMMm.....``  
-   mMMo    /MMM`  :MMM/----dMdo   yMMMMMMMN    
-   mMMo    /MMM`  :MMMMMMMMhs     yMMNyyyys    
-   mMMo    /MMM`  :MMMs++++.      yMMd         
-   mMMmh.`hdMMM`  :MMM.           yMMd         
-   ...sMmmMh...   :MMM.           yMMd        
+  
+  ![www.upf.pf](http://www.upf.pf/themes/upf/images/logo.png)      
  
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
