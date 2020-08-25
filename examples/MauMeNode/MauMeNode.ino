@@ -21,22 +21,26 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
     Lesser General Public License for more details.  
 */
-#include "MauMeV1.h"
+ #include "MauMeV1.h"
 
-void IRAM_ATTR onPacketDelivery(int nbPacketsInBox){
+void  onPacketDelivery(int nbPacketsInBox){
   // Do something to retrieve messages as fast as possible. Too long operations may trigger an ISR "Guru Meditation" error. 
   // If you want to free yourself from ISR (callbacks) issues, run a separate thread of your own to check for messages using 
   // either 'countReceivedMessages()' or 'getReceivedPackets()'.
-  Serial.println("Received "+String(nbPacketsInBox) +" message(s).");
-  LoRa_PKT * list = MauMe.getReceivedPackets();
+  Serial.println(" ! User Received "+String(nbPacketsInBox) +" message(s).");
+  PKT_LINK * list = MauMe.getReceivedPackets();
   while(list){                                    // This should not be done here
-    Serial.println(MauMe.pkt2Str(list) + "\n");   // This should not be done here
+    Serial.println(MauMe.pkt2Str(list->PKT) + "\n");   // This should not be done here
     list = MauMe.freeAndGetNext(list);            // This should not be done here
   }
 }
 
 void setup() {
   MauMe.setup(115200); // Setup MauMe with serial speed. Everything eles is automated.
+  #ifdef MAUME_DEBUG   // #endif
+    Serial.print(" -> User task started on core ");
+    Serial.println(xPortGetCoreID());
+  #endif
   MauMe.oledDisplay(false); // This is configured for Heltec LoRa V2 board. Use according to requirements.
   MauMe.onDelivery(onPacketDelivery);
   //
@@ -46,5 +50,10 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-
+  /*if(!rand()%20){
+    MauMe.enlistMessageForTransmit("AA:BB:CC:DD:EE:FF:GG:HH:II:JJ:KK:LL", "Hello world");
+  }
+  else{*/
+    delay(5000);
+  //}
 }
