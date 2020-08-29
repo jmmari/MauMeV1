@@ -1,5 +1,6 @@
 # MauMeV1
 MauMe LoRa Multi-Hops Messaging for Arduino
+(Develloped on ![Heltec LoRa V2](https://heltec.org/project/wifi-lora-32/))
 
 ![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/data/WWW/Logo-MMM-color.png?raw=true)
 
