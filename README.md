@@ -7,9 +7,15 @@ Please use the example to get started.
 
 Your nodes can use this to exchange messages up to 205 bytes long. Each node acts as a relay forwarding messages from all other MauMe nodes using the same LoRa settings. Do not modify those settings if you want to benefit from the other users'nodes. 
 
-You should also consider leaving your nodes active as long as possible: the less a node sleeps, the more it can relay messages from your other nodes.
+You should also consider leaving your nodes active as long as possible: the less a node sleeps, the more it can relay messages from (your ?) other nodes.
 
-Please call "sleepMauMe()" method before going to deep-sleep in non-terminal mode, to ensure saving the last received packets.
+You should call the "MauMe.sleepMauMe()" method before going to deep-sleep in non-terminal mode, to ensure saving the last received packets.
+
+You can operate your node as:
+- Relay and Terminal node: accepts MauMe packets and forwards them (comment line MAUME_BEHAVE_AS_TERMINAL).
+- Terminal node (uncomment MAUME_BEHAVE_AS_TERMINAL): does not accept messages from others, only transmits (you should call the processPackets method yourself if you want to skip the random timing transmission delay).
+
+If you run your node in relay mode, you should de-activate TTL decrease on transmit (comment MAUME_HOP_ON_TX).
 
 ______________________________________________________________________________________________
  MauMe LoRa Multi-Hops Messaging for Arduino
