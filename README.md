@@ -7,6 +7,8 @@ Please use the example to get started.
 
 Your nodes can use this to exchange messages up to 205 bytes long. Each node acts as a relay forwarding messages from all other MauMe nodes using the same LoRa settings. Do not modify those settings if you want to benefit from the other users'nodes. 
 
+![www.upf.pf](https://drive.google.com/file/d/1yFPr_8HTSCyyoXQzXHf9BTH0pRqVk_GV/view?usp=sharing)
+
 You should also consider leaving your nodes active as long as possible: the less a node sleeps, the more it can relay messages from (your ?) other nodes.
 
 You should call the "MauMe.sleepMauMe()" method before going to deep-sleep in non-terminal mode, to ensure saving the last received packets.
