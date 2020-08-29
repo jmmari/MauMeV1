@@ -1,5 +1,5 @@
 # MauMeV1
-MauMe LoRa Multi-Hops Messaging for Arduino
+MauMe LoRa Multi-Hops Messaging for Arduino ![www.upf.pf](https://github.com/jmmari/MauMeV1/blob/master/data/WWW/Logo-MMM-color.png?raw=true)
 
 This library allows creating LoRa nodes executing your code for your application, using a Multi-Hop collaborative LoRa messaging protocol. 
 
@@ -7,7 +7,7 @@ Please use the example to get started.
 
 Your nodes can use this to exchange messages up to 205 bytes long. Each node acts as a relay forwarding messages from all other MauMe nodes using the same LoRa settings. Do not modify those settings if you want to benefit from the other users'nodes. 
 
-![www.upf.pf](https://drive.google.com/file/d/1yFPr_8HTSCyyoXQzXHf9BTH0pRqVk_GV/view?usp=sharing)
+
 
 You should also consider leaving your nodes active as long as possible: the less a node sleeps, the more it can relay messages from (your ?) other nodes.
 
