@@ -36,4 +36,5 @@ ________________________________________________________________________________
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
     Lesser General Public License for more details.  
     
-    ![www.upf.pf](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure5.png?raw=true)
+
+![www.upf.pf](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure5.png?raw=true)
