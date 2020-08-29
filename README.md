@@ -41,6 +41,6 @@ ________________________________________________________________________________
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
     Lesser General Public License for more details.  
     
-Thanks and respects to the people who wrote the routines this library is using !
+Thanks and respects to the people who wrote the routines this library is using ! Their work remains theirs' !
 
 ![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure5.png?raw=true)
