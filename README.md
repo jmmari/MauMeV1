@@ -1,7 +1,6 @@
 # MauMeV1
-MauMe LoRa Multi-Hops Messaging for Arduino !
-[https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/data/WWW/Logo-MMM-color.png?raw=true)
-
+MauMe LoRa Multi-Hops Messaging for Arduino
+![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/data/WWW/Logo-MMM-color.png?raw=true)
 This library allows creating LoRa nodes executing your code for your application, using a Multi-Hop collaborative LoRa messaging protocol. 
 
 ![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure1.png?raw=true)
