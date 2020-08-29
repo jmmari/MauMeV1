@@ -1,9 +1,10 @@
 # MauMeV1
-MauMe LoRa Multi-Hops Messaging for Arduino ![www.upf.pf](https://github.com/jmmari/MauMeV1/blob/master/data/WWW/Logo-MMM-color.png?raw=true)
+MauMe LoRa Multi-Hops Messaging for Arduino !
+[https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/data/WWW/Logo-MMM-color.png?raw=true)
 
 This library allows creating LoRa nodes executing your code for your application, using a Multi-Hop collaborative LoRa messaging protocol. 
 
-![www.upf.pf](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure1.png?raw=true)
+![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure1.png?raw=true)
 
 Please use the example to get started.
 
@@ -17,7 +18,8 @@ You can operate your node as:
 - Relay and Terminal node: accepts MauMe packets and forwards them (comment line MAUME_BEHAVE_AS_TERMINAL).
 - Terminal node (uncomment MAUME_BEHAVE_AS_TERMINAL): does not accept messages from others, only transmits (you should call the processPackets method yourself if you want to skip the random timing transmission delay).
 
-If you run your node in relay mode, you should de-activate TTL decrease on transmit (comment MAUME_HOP_ON_TX).
+If you run your node in relay mode, you should de-activate TTL decrease on transmit (comment MAUME_HOP_ON_TX), and take advantage of the MauMe SMS WiFi http interface (http://maume or http://1.1.1.1):
+![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure11.png?raw=true)
 
 ______________________________________________________________________________________________
  MauMe LoRa Multi-Hops Messaging for Arduino
@@ -37,4 +39,4 @@ ________________________________________________________________________________
     Lesser General Public License for more details.  
     
 
-![www.upf.pf](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure5.png?raw=true)
+![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure5.png?raw=true)
