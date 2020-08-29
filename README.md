@@ -21,6 +21,7 @@ You can operate your node as:
 - Terminal node (uncomment MAUME_BEHAVE_AS_TERMINAL): does not accept messages from others, only transmits (you should call the processPackets method yourself if you want to skip the random timing transmission delay).
 
 If you run your node in relay mode, you should de-activate TTL decrease on transmit (comment MAUME_HOP_ON_TX), and take advantage of the MauMe SMS WiFi http interface (http://maume or http://1.1.1.1):
+
 ![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure11.png?raw=true)
 
 ______________________________________________________________________________________________
