@@ -8,17 +8,17 @@ This library allows creating LoRa nodes executing your code for your application
 
 ![https://github.com/jmmari/MauMeV1](https://github.com/jmmari/MauMeV1/blob/master/Figures/Figure1.png?raw=true)
 
-Please use the example to get started.
+Please use the example to get started. Just copy the libray in your Arduino/librairies directory.
 
 Your nodes can use this to exchange messages up to 205 bytes long. Each node acts as a relay forwarding messages from all other MauMe nodes using the same LoRa settings. Do not modify those settings if you want to benefit from the other users'nodes. 
 
-You should also consider leaving your nodes active as long as possible: the less a node sleeps, the more it can relay messages from (your ?) other nodes.
+You should also consider leaving your nodes active as long as possible: the less a node sleeps, the more it can relay messages from (your ?) other nodes. Run your well powered nodes in relay mode (comment MAUME_BEHAVE_AS_TERMINAL), with MAUME_HOP_ON_TX commented so that relayed messages will not be deleted until hoped to another node to increase items lifetime. 
 
-You should call the "MauMe.sleepMauMe()" method before going to deep-sleep in non-terminal mode, to ensure saving the last received packets.
+You should call the "MauMe.sleepMauMe()" method before going to deep-sleep in non-terminal mode, to ensure saving the current parameters and the last received packets.
 
 You can operate your node as:
 - Relay and Terminal node: accepts MauMe packets and forwards them (comment line MAUME_BEHAVE_AS_TERMINAL).
-- Terminal node (uncomment MAUME_BEHAVE_AS_TERMINAL): does not accept messages from others, only transmits (you should call the processPackets method yourself if you want to skip the random timing transmission delay).
+- Terminal node (uncomment MAUME_BEHAVE_AS_TERMINAL): does not accept messages from others, only transmits (you should call the processPackets method yourself if you want to skip the random timing transmission delay after posting a message).
 
 If you run your node in relay mode, you should de-activate TTL decrease on transmit (comment MAUME_HOP_ON_TX), and take advantage of the MauMe SMS WiFi http interface (http://maume or http://1.1.1.1):
 
