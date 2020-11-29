@@ -70,15 +70,13 @@
   
   #define BAND               867.875E6
   #define PABOOST            false
-  #define TXPOWER                2
-  #define SPREADING_FACTOR       7 // 12
+  #define TXPOWER               20
+  #define SPREADING_FACTOR      12
   #define BANDWIDTH         125000 //500000 // 
   #define CODING_RATE            5 // ? 
   #define PREAMBLE_LENGTH        7 // 9
   #define SYNC_WORD           0x4E
   #define BLUE_LED              25
-  // #define LowPower               4
-  // #define HighPower             20
   
   #define LORA_READ_DELAY      100
   //------------------------------------------------------ MAUME -------------------------------------------
