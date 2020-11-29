@@ -211,15 +211,15 @@ private:
   volatile bool           doServe = true;
   
   String    logFile = "";       // This is the path to the MauMe log file.
-  int       DUMMY_PROCESS_STATIC_DELAY        =   30000;  // milliseconds
-  int       DUMMY_PROCESS_RANDOM_DELAY        =   30000;  // milliseconds
-  int       MM_PCKT_PROCESS_STATIC_DELAY      =   30000;  // milliseconds
-  int       MM_PCKT_PROCESS_RANDOM_DELAY      =   30000;  // milliseconds
+  int       DUMMY_PROCESS_STATIC_DELAY        =   300000;  // milliseconds
+  int       DUMMY_PROCESS_RANDOM_DELAY        =   300000;  // milliseconds
+  int       MM_PCKT_PROCESS_STATIC_DELAY      =   300000;  // milliseconds
+  int       MM_PCKT_PROCESS_RANDOM_DELAY      =   300000;  // milliseconds
   int       CLEANING_PROCESS_STATIC_DELAY        =   MAUME_CLEAN_RATE*MM_PCKT_PROCESS_STATIC_DELAY;  // milliseconds
   int       CLEANING_PROCESS_RANDOM_DELAY        =   MAUME_CLEAN_RATE*MM_PCKT_PROCESS_RANDOM_DELAY;  // milliseconds
   int       MM_TX_POWER_MIN                   =       2;  // THESE ARE FOR HELTEC LoRa V2
   int       MM_TX_POWER                       =       MM_TX_POWER_MIN;  // THESE ARE FOR HELTEC LoRa V2
-  int       MM_TX_POWER_MAX                   =       2;  // THESE ARE FOR HELTEC LoRa V2
+  int       MM_TX_POWER_MAX                   =      20;  // THESE ARE FOR HELTEC LoRa V2
   int       MM_NB_TXT                         =       0;  // 
   int       MM_NB_RXT                         =       0;  // 
   int       MM_NB_RX                          =       0;  // 
