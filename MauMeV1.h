@@ -41,7 +41,7 @@
   #ifndef MAUME_HOP_ON_TX 
     #define MAUME_HOP_ON_RECEIVE    // OR PKT NHP and ACKs HTL are inc/dec-remented on receive.
   #endif 
-  #define MAUME_ADMIN_ADDR        "ea:b9:dd:dc:5e:1d:41:13:12:c6:0c:8f"   
+  #define MAUME_ADMIN_ADDR        "XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX"   
   #define MAUME_SETUP_WEB_SERVER     // Define if you want to serve messsages with http (requires DNS and soft access point).
   #define MAUME_SETUP_DNS_SERVER  // Define if you want to serve messsages with http (requires soft access point).
   #define MAUME_ACTIVATE_WIFI        // Define if you want to activate MauMe Wifi soft access point.
@@ -227,9 +227,9 @@ private:
   bool      doAlternate                       =   false;
   int       percentActivity                   =      75;
   int       alternateInterval                 =   12*60*1000;//3600000;  // milliseconds
-  int       dummySendInterval                 =   10000;  // milliseconds
+  int       dummySendInterval                 =   100000;  // milliseconds
   int       nbDummyPkts                       =      25;
-  String    dummyTargetAddress                =      "df:15:33:72:73:7e:fc:30:5c:0b:06:72";
+  String    dummyTargetAddress                =      "XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX:XX";
   volatile bool sendDummies                   =   false;
   
   volatile SemaphoreHandle_t          pcktListSemaphore;
