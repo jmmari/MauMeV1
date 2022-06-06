@@ -85,6 +85,7 @@
   #define DNS_TASK_DELAY    128
   #define MAX_PACKETS_COUNT  99  
   
+  #define MM_INIT_NHP          254   // Init NHP = 255 - TTL
   #define MM_TYPE_UKN          1   // Undefined MauMe format.
   #define MM_TYPE_REM          2   // 
   #define MM_TYPE_SHA          3   // 
