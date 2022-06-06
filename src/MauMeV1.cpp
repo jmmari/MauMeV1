@@ -701,7 +701,7 @@ MM_PKT *  MauMeClass::createPKT(ADDRESS addressFrom, ADDRESS addressTo, String m
   MM_PKT * mmm = NULL;
   if(message.length() > 0 && message.length() <= MAX_MM_PKT_SIZE){
     mmm = (MM_PKT *)calloc(1, sizeof(MM_PKT));
-    mmm->HDR.NHP = (unsigned char)(0);
+    mmm->HDR.NHP = (unsigned char)(MM_INIT_NHP);
     mmm->HDR.TYPE = MM_TYPE_PKT;
     mmm->HDR.SEND = addressFrom;
     mmm->HDR.DEST = addressTo;
